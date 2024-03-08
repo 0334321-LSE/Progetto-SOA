@@ -1,0 +1,1 @@
+cmd_/media/sf_shared-dir/Progetto/ReferenceMonitor/Module.symvers :=  sed 's/ko$$/o/'  /media/sf_shared-dir/Progetto/ReferenceMonitor/modules.order | scripts/mod/modpost -m     -o /media/sf_shared-dir/Progetto/ReferenceMonitor/Module.symvers -e -i Module.symvers -T - 

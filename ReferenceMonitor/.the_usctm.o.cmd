@@ -1,0 +1,1 @@
+cmd_/media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.o := ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments   -r -o /media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.o @/media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.mod 

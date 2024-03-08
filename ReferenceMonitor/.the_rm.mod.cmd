@@ -1,0 +1,1 @@
+cmd_/media/sf_shared-dir/Progetto/ReferenceMonitor/the_rm.mod := printf '%s\n'   rm_module.o | awk '!x[$$0]++ { print("/media/sf_shared-dir/Progetto/ReferenceMonitor/"$$0) }' > /media/sf_shared-dir/Progetto/ReferenceMonitor/the_rm.mod

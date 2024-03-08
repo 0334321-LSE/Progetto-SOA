@@ -1,0 +1,1 @@
+cmd_/media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T arch/x86/module.lds -o /media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.ko /media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.o /media/sf_shared-dir/Progetto/ReferenceMonitor/the_usctm.mod.o;  true
