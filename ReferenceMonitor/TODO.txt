@@ -1,0 +1,4 @@
+1 Evita che venga inserito un path se già esistente. FATTO
+2 Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
+3 Fai un interfaccia user con cui interagire col monitor.
+4 Chiedi a cobero se i parametri delle syscall bisogna fare copyfrom user o possan esser direttamente usati.

@@ -69,7 +69,6 @@ extern int sys_vtpmo(unsigned long vaddr);
 
 #define ENTRIES_TO_EXPLORE 256
 
-
 unsigned long *hacked_ni_syscall=NULL;
 unsigned long **hacked_syscall_tbl=NULL;
 
@@ -188,6 +187,12 @@ asmlinkage long sys_state_update(char* state ,char* password){
 
 		old_state = monitor->state;
 
+		// Check password length to avoid some kind of overflow vulnerabilities
+		if (strlen(password)>PASW_MAX_LENGTH){
+			printk("%s: Password is to bigger.\n",MODNAME);
+			return -EINVAL;  // To big password 
+		}
+
 		// Check password
 		if (strcmp(password, monitor->password) != 0) {
 			printk("%s: Password isn't valid.\n",MODNAME);
@@ -209,7 +214,7 @@ asmlinkage long sys_state_update(char* state ,char* password){
 
 		new_state = monitor->state;
 
-        printk("%s: State changed from %s to %s correctly by thread: %d\n",MODNAME,states[new_state],states[old_state],current->pid);
+        printk("%s: State changed from %s to %s correctly by thread: %d\n",MODNAME,states[old_state],states[new_state],current->pid);
 
 		return 0;  // Successo
 }
@@ -218,6 +223,121 @@ asmlinkage long sys_state_update(char* state ,char* password){
 static unsigned long sys_state_update = (unsigned long) __x64_sys_state_update;	
 #else
 #endif
+
+// SECOND SYSCALL
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+__SYSCALL_DEFINEx(3, _configure_path, char*, path, char*, password, int, mod){
+#else
+asmlinkage long sys_configure_path(char* path ,char* password, int mod){
+#endif
+	
+	// Vector of states for cute printing
+	const char* states[] = {"OFF", "REC_OFF", "ON", "REC_ON"};
+
+	char *kernel_path;
+	struct protected_path *entry, *tmp;
+	
+	// Check monitor
+	if ( !monitor ){
+		printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
+		return-EINVAL; // Monitor doesn't exists
+	}
+
+	// Check monitor state  (it can be reconfigured only in REC-OFF or REC-ON)
+	if ( monitor->state == 0 || monitor->state == 2){
+		printk("%s: Can't re-configure monitor in %s state.\n", MODNAME, states[monitor->state]);
+		return -EPERM; // State is wrong
+	}
+
+	// Check password length to avoid some kind of overflow vulnerabilities
+	if (strlen(password)>PASW_MAX_LENGTH){
+		printk("%s: Password is to bigger.\n",MODNAME);
+		return -EINVAL;  // To big password 
+	}
+
+	// Check password
+	if (strcmp(password, monitor->password) != 0) {
+		printk("%s: Password isn't valid.\n",MODNAME);
+		return -EINVAL;  // Not valid password 
+	}
+
+	
+	// kmalloc path into kernel space, PATH_MAX is the maximium size of a path in the kernel.
+	kernel_path = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!kernel_path)
+		return -ENOMEM; 
+
+	// Copy from user space the path.
+	if (copy_from_user(kernel_path, path, PATH_MAX)) {
+		kfree(kernel_path);
+		return -EFAULT;
+	}
+
+	switch (mod)
+	{
+	case 0 /* ADD */:
+
+		// Check if path is already present
+		if(file_in_protected_paths(kernel_path)){
+			printk("%s: Path %s already exists \n",MODNAME, kernel_path);
+			return -EINVAL;
+		}
+
+		// kmalloc one protected path
+		entry = kmalloc(sizeof(struct protected_path), GFP_KERNEL);
+		if (!entry) {
+			printk("%s: Entry can't be allocated \n",MODNAME);
+			kfree(kernel_path);
+            return -ENOMEM; 
+		}
+
+		entry->path_name = kernel_path;
+
+		// Acquire lock to work with the list
+		spin_lock(&monitor->lock);
+		list_add(&entry->list, &monitor->protected_paths);
+		spin_unlock(&monitor->lock);
+
+		printk("%s: Path %s added successfully by %d\n",MODNAME, kernel_path,current->pid);
+
+		break;
+		
+	case 1 /* REMOVE*/:
+
+		spin_lock(&monitor->lock);
+		// find and remove the path 
+		list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
+			if (strcmp(entry->path_name, kernel_path) == 0) {
+				list_del(&entry->list);
+				kfree(entry->path_name);
+				kfree(entry);
+				kfree(kernel_path);
+				spin_unlock(&monitor->lock);
+				printk("%s: Path %s removed successfully by %d\n",MODNAME, path,current->pid);
+				break;
+			}
+		}
+		spin_unlock(&monitor->lock);
+		
+		// Return error if path doesn't exist
+		printk("%s: Path %s doesn't exists %d\n",MODNAME, kernel_path,current->pid);
+		kfree(kernel_path);
+		return -ENOENT; // Path not find
+    
+	default:
+		kfree(kernel_path);
+		printk("%s: Modality %d is not supported by this systemcall \n",MODNAME, mod);
+		return -EINVAL;
+	}	
+
+	return 0; // Successo
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+static unsigned long sys_configure_path = (unsigned long) __x64_sys_configure_path;	
+#else
+#endif
+
 
 unsigned long cr0;
 
@@ -244,8 +364,11 @@ unprotect_memory(void)
     write_cr0_forced(cr0 & ~X86_CR0_WP);
 }
 
+
 #else
 #endif
+
+
 
 
 
@@ -274,12 +397,13 @@ int init_module(void) {
 	cr0 = read_cr0();
         unprotect_memory();
         hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_state_update;
+		hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_configure_path;
         protect_memory();
-		printk("%s: a sys_call with 2 parameters has been installed as a trial on the sys_call_table at displacement %d\n",MODNAME,FIRST_NI_SYSCALL);	
+		printk("%s: Added state_update on the sys_call_table at displacement %d\n",MODNAME,FIRST_NI_SYSCALL);
+		printk("%s: Added configure_path on the sys_call_table at displacement %d\n",MODNAME,SECOND_NI_SYSCALL);	
+		printk("%s: module correctly mounted\n",MODNAME);
 #else
 #endif
-
-        printk("%s: module correctly mounted\n",MODNAME);
 
         return 0;
 
@@ -291,6 +415,7 @@ void cleanup_module(void) {
 	cr0 = read_cr0();
         unprotect_memory();
         hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+		hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
         protect_memory();
 #else
 #endif

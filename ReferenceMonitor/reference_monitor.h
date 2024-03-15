@@ -5,6 +5,10 @@
 #include <linux/spinlock.h>  
 #include <linux/slab.h> 
 
+// MAX PASW SIZE
+#define PASW_MAX_LENGTH 64
+extern struct reference_monitor* monitor;
+
 enum State {
     OFF,
     REC_OFF,
@@ -22,7 +26,7 @@ struct reference_monitor {
     struct list_head protected_paths;
     char* password;
     spinlock_t lock;
-    // Altri campi necessari per la gestione del monitor
 };
 
+int file_in_protected_paths(char* filename);
 #endif /* REFERENCE_MONITOR_H */
