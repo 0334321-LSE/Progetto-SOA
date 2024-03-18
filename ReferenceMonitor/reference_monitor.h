@@ -4,9 +4,12 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>  
 #include <linux/slab.h> 
+#include <linux/string.h>
 
 // MAX PASW SIZE
 #define PASW_MAX_LENGTH 64
+#define STATE_MAX_LENGTH 16
+
 extern struct reference_monitor* monitor;
 
 enum State {
@@ -28,5 +31,5 @@ struct reference_monitor {
     spinlock_t lock;
 };
 
-int file_in_protected_paths(char* filename);
+int file_in_protected_paths(const char* filename);
 #endif /* REFERENCE_MONITOR_H */

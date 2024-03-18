@@ -52,7 +52,6 @@ MODULE_DESCRIPTION("USCTM");
 
 #define MODNAME "USCTM"
 
-extern struct reference_monitor* monitor;
 extern int sys_vtpmo(unsigned long vaddr);
 
 #define ADDRESS_MASK 0xfffffffffffff000//to migrate
@@ -185,34 +184,39 @@ asmlinkage long sys_state_update(char* state ,char* password){
 			return-EINVAL; // Monitor doesn't exists
 		}
 
+		/*spin_lock(&monitor->lock);
+		printk("%s: LOCK \n",MODNAME);*/
+
 		old_state = monitor->state;
 
 		// Check password length to avoid some kind of overflow vulnerabilities
 		if (strlen(password)>PASW_MAX_LENGTH){
-			printk("%s: Password is to bigger.\n",MODNAME);
+			printk("%s: Password is to big.\n",MODNAME);
 			return -EINVAL;  // To big password 
 		}
 
 		// Check password
-		if (strcmp(password, monitor->password) != 0) {
+		if (strncmp(password, monitor->password, strlen(monitor->password)) != 0) {
 			printk("%s: Password isn't valid.\n",MODNAME);
 			return -EINVAL;  // Not valid password 
 		}
 
 		// Update monitor state
-		if (strcmp(state, "ON") == 0) {
+		if (strncmp(state, "ON",strlen("ON")) == 0) {
 			monitor->state = ON;
-		} else if (strcmp(state, "OFF") == 0) {
+		} else if (strncmp(state, "OFF",strlen("OFF")) == 0) {
 			monitor->state = OFF;
-		} else if (strcmp(state, "REC-ON") == 0) {
+		} else if (strncmp(state, "REC-ON",strlen("REC-ON")) == 0) {
 			monitor->state = REC_ON;
-		} else if (strcmp(state, "REC-OFF") == 0) {
+		} else if (strncmp(state, "REC-OFF",strlen("REC-OFF")) == 0) {
 			monitor->state = REC_OFF;
 		} else {
 			return -EINVAL;  // Stato non valido
 		}
 
 		new_state = monitor->state;
+		/*spin_unlock(&monitor->lock);
+		printk("%s: UNLOCK \n",MODNAME);*/
 
         printk("%s: State changed from %s to %s correctly by thread: %d\n",MODNAME,states[old_state],states[new_state],current->pid);
 
@@ -243,23 +247,35 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 		return-EINVAL; // Monitor doesn't exists
 	}
 
+	/*printk("%s: LOCK \n",MODNAME);
+	spin_lock(&monitor->lock);*/
+
 	// Check monitor state  (it can be reconfigured only in REC-OFF or REC-ON)
 	if ( monitor->state == 0 || monitor->state == 2){
+		/*spin_unlock(&monitor->lock);
+		printk("%s: UNLOCK \n",MODNAME);*/
 		printk("%s: Can't re-configure monitor in %s state.\n", MODNAME, states[monitor->state]);
 		return -EPERM; // State is wrong
 	}
 
 	// Check password length to avoid some kind of overflow vulnerabilities
 	if (strlen(password)>PASW_MAX_LENGTH){
-		printk("%s: Password is to bigger.\n",MODNAME);
+		/*spin_unlock(&monitor->lock);
+		printk("%s: UNLOCK \n",MODNAME);*/
+		printk("%s: Password is to big.\n",MODNAME);
 		return -EINVAL;  // To big password 
 	}
 
 	// Check password
-	if (strcmp(password, monitor->password) != 0) {
+	if (strncmp(password, monitor->password, strlen(monitor->password)) != 0) {
+		/*spin_unlock(&monitor->lock);
+		printk("%s: UNLOCK \n",MODNAME);*/
 		printk("%s: Password isn't valid.\n",MODNAME);
 		return -EINVAL;  // Not valid password 
 	}
+	
+	/*spin_unlock(&monitor->lock);
+	printk("%s: UNLOCK \n",MODNAME);*/
 
 	
 	// kmalloc path into kernel space, PATH_MAX is the maximium size of a path in the kernel.
@@ -279,7 +295,7 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 
 		// Check if path is already present
 		if(file_in_protected_paths(kernel_path)){
-			printk("%s: Path %s already exists \n",MODNAME, kernel_path);
+			printk("%s: Path %s already exists \n", MODNAME, kernel_path);
 			return -EINVAL;
 		}
 
@@ -295,7 +311,9 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 
 		// Acquire lock to work with the list
 		spin_lock(&monitor->lock);
+
 		list_add(&entry->list, &monitor->protected_paths);
+
 		spin_unlock(&monitor->lock);
 
 		printk("%s: Path %s added successfully by %d\n",MODNAME, kernel_path,current->pid);
@@ -304,21 +322,23 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 		
 	case 1 /* REMOVE*/:
 
+		
 		spin_lock(&monitor->lock);
+
 		// find and remove the path 
 		list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
-			if (strcmp(entry->path_name, kernel_path) == 0) {
+			if (strncmp(entry->path_name, kernel_path, strlen(entry->path_name)) == 0) {
 				list_del(&entry->list);
-				kfree(entry->path_name);
 				kfree(entry);
-				kfree(kernel_path);
 				spin_unlock(&monitor->lock);
-				printk("%s: Path %s removed successfully by %d\n",MODNAME, path,current->pid);
-				break;
+			
+				printk("%s: Path %s removed successfully by %d\n",MODNAME, kernel_path,current->pid);
+				kfree(kernel_path);
+				return 0;
 			}
 		}
 		spin_unlock(&monitor->lock);
-		
+
 		// Return error if path doesn't exist
 		printk("%s: Path %s doesn't exists %d\n",MODNAME, kernel_path,current->pid);
 		kfree(kernel_path);
@@ -395,17 +415,17 @@ int init_module(void) {
 
 #ifdef SYS_CALL_INSTALL
 	cr0 = read_cr0();
-        unprotect_memory();
-        hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_state_update;
-		hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_configure_path;
-        protect_memory();
-		printk("%s: Added state_update on the sys_call_table at displacement %d\n",MODNAME,FIRST_NI_SYSCALL);
-		printk("%s: Added configure_path on the sys_call_table at displacement %d\n",MODNAME,SECOND_NI_SYSCALL);	
-		printk("%s: module correctly mounted\n",MODNAME);
+	unprotect_memory();
+	hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_state_update;
+	hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_configure_path;
+	protect_memory();
+	printk("%s: Added state_update on the sys_call_table at displacement %d\n",MODNAME,FIRST_NI_SYSCALL);
+	printk("%s: Added configure_path on the sys_call_table at displacement %d\n",MODNAME,SECOND_NI_SYSCALL);	
+	printk("%s: module correctly mounted\n",MODNAME);
 #else
 #endif
 
-        return 0;
+	return 0;
 
 }
 
@@ -413,12 +433,12 @@ void cleanup_module(void) {
                 
 #ifdef SYS_CALL_INSTALL
 	cr0 = read_cr0();
-        unprotect_memory();
-        hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
-		hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
-        protect_memory();
+	unprotect_memory();
+	hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+	hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+	protect_memory();
 #else
 #endif
-        printk("%s: shutting down\n",MODNAME);
+	printk("%s: shutting down\n",MODNAME);
         
 }

@@ -3,3 +3,70 @@ make[1]: *** [/usr/src/linux-headers-6.1.0-13-common/Makefile:2039: /media/sf_sh
 make[1]: Leaving directory '/usr/src/linux-headers-6.1.0-13-amd64'
 make: *** [Makefile:11: all] Error 2
 /media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/user
+
+[  436.288645] BUG: unable to handle page fault for address: 0000563180ae43c2
+[  436.288650] #PF: supervisor read access in kernel mode
+[  436.288651] #PF: error_code(0x0000) - not-present page
+[  436.288653] PGD 12181e067 P4D 12181e067 PUD 103733067 PMD 1049ee067 PTE 0
+[  436.288657] Oops: 0000 [#1] PREEMPT SMP NOPTI
+[  436.288659] CPU: 3 PID: 3488 Comm: bash Tainted: G           OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  436.288662] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  436.288663] RIP: 0010:string+0x48/0xe0
+[  436.288668] Code: 3b 45 89 d1 45 31 c0 49 01 f9 66 45 85 d2 75 1a eb 1f 48 39 f7 73 02 88 07 48 83 c7 01 41 83 c0 01 48 83 c2 01 4c 39 cf 74 07 <0f> b6 02 84 c0 75 e1 48 89 f2 44 89 c6 e9 b6 e4 ff ff 48 c7 c0 d6
+[  436.288670] RSP: 0018:ffffab0302be3bb0 EFLAGS: 00010086
+[  436.288672] RAX: 0000563180ae33c2 RBX: ffffffffc0d930fb RCX: ffff0a00ffffff04
+[  436.288674] RDX: 0000563180ae43c2 RSI: ffffab0302be3ca8 RDI: ffffab0302be3cb5
+[  436.288675] RBP: ffffab0302be3c88 R08: 0000000000000000 R09: ffffab0402be3cb4
+[  436.288676] R10: ffffffffffffffff R11: 0000000000000000 R12: ffffab0302be3ca8
+[  436.288677] R13: ffffffffc0d930fb R14: 0000000000000008 R15: ffffab0302be3cb5
+[  436.288678] FS:  00007f5505f7e740(0000) GS:ffff9fcad1d80000(0000) knlGS:0000000000000000
+[  436.288680] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  436.288681] CR2: 0000563180ae43c2 CR3: 00000001069ba002 CR4: 00000000000306e0
+[  436.288684] Call Trace:
+[  436.288687]  <TASK>
+[  436.288689]  ? __die_body.cold+0x1a/0x1f
+[  436.288692]  ? page_fault_oops+0xd2/0x2b0
+[  436.288696]  ? exc_page_fault+0x70/0x170
+[  436.288699]  ? asm_exc_page_fault+0x22/0x30
+[  436.288706]  ? string+0x48/0xe0
+[  436.288707]  vsnprintf+0x32c/0x550
+[  436.288710]  vprintk_store+0x1c1/0x520
+[  436.288716]  vprintk_emit+0xec/0x280
+[  436.288718]  ? __x64_sys_openat+0x5/0xa0
+[  436.288721]  _printk+0x68/0x83
+[  436.288724]  handler_pre.cold+0x16/0xe40 [the_probe]
+[  436.288728]  ? __x64_sys_openat+0x1/0xa0
+[  436.288730]  kprobe_ftrace_handler+0x108/0x1b0
+[  436.288735]  0xffffffffc05610c8
+[  436.288738]  ? __ia32_sys_open+0xa0/0xa0
+[  436.288740]  ? __x64_sys_openat+0x1/0xa0
+[  436.288741]  __x64_sys_openat+0x5/0xa0
+[  436.288744]  do_syscall_64+0x58/0xc0
+[  436.288746]  ? do_user_addr_fault+0x1b0/0x580
+[  436.288748]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  436.288751]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  436.288754] RIP: 0033:0x7f5506078f01
+[  436.288756] Code: 75 57 89 f0 25 00 00 41 00 3d 00 00 41 00 74 49 80 3d ea 26 0e 00 00 74 6d 89 da 48 89 ee bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 0f 87 93 00 00 00 48 8b 54 24 28 64 48 2b 14 25
+[  436.288757] RSP: 002b:00007ffdb8ceb0c0 EFLAGS: 00000202 ORIG_RAX: 0000000000000101
+[  436.288759] RAX: ffffffffffffffda RBX: 0000000000000802 RCX: 00007f5506078f01
+[  436.288760] RDX: 0000000000000802 RSI: 0000563180ae43c2 RDI: 00000000ffffff9c
+[  436.288762] RBP: 0000563180ae43c2 R08: 0000000000000000 R09: 00007f55061ad6a0
+[  436.288763] R10: 0000000000000000 R11: 0000000000000202 R12: 0000000000000000
+[  436.288764] R13: 00007ffdb8ceb3f0 R14: 0000563180b1aaf8 R15: 00007f55061db020
+[  436.288766]  </TASK>
+[  436.288767] Modules linked in: the_probe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) rfkill qrtr intel_rapl_msr intel_rapl_common intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd snd_intel8x0 cryptd snd_ac97_codec rapl ac97_bus joydev snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore ac evdev sg serio_raw binfmt_misc msr parport_pc ppdev lp parport loop dm_mod fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi sr_mod cdrom crc64_rocksoft crc64 crc_t10dif crct10dif_generic ata_generic vmwgfx ahci drm_ttm_helper libahci ata_piix ttm drm_kms_helper ohci_pci drm libata ohci_hcd ehci_pci crct10dif_pclmul crct10dif_common ehci_hcd crc32_pclmul scsi_mod usbcore crc32c_intel e1000 i2c_piix4 psmouse usb_common scsi_common battery video wmi button [last unloaded: the_rm(OE)]
+[  436.288825] CR2: 0000563180ae43c2
+[  436.288826] ---[ end trace 0000000000000000 ]---
+[  436.288845] RIP: 0010:string+0x48/0xe0
+[  436.288847] Code: 3b 45 89 d1 45 31 c0 49 01 f9 66 45 85 d2 75 1a eb 1f 48 39 f7 73 02 88 07 48 83 c7 01 41 83 c0 01 48 83 c2 01 4c 39 cf 74 07 <0f> b6 02 84 c0 75 e1 48 89 f2 44 89 c6 e9 b6 e4 ff ff 48 c7 c0 d6
+[  436.288849] RSP: 0018:ffffab0302be3bb0 EFLAGS: 00010086
+[  436.288851] RAX: 0000563180ae33c2 RBX: ffffffffc0d930fb RCX: ffff0a00ffffff04
+[  436.288852] RDX: 0000563180ae43c2 RSI: ffffab0302be3ca8 RDI: ffffab0302be3cb5
+[  436.288853] RBP: ffffab0302be3c88 R08: 0000000000000000 R09: ffffab0402be3cb4
+[  436.288854] R10: ffffffffffffffff R11: 0000000000000000 R12: ffffab0302be3ca8
+[  436.288855] R13: ffffffffc0d930fb R14: 0000000000000008 R15: ffffab0302be3cb5
+[  436.288856] FS:  00007f5505f7e740(0000) GS:ffff9fcad1d80000(0000) knlGS:0000000000000000
+[  436.288858] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  436.288859] CR2: 0000563180ae43c2 CR3: 00000001069ba002 CR4: 00000000000306e0
+[  436.288861] note: bash[3488] exited with irqs disabled
+[  436.288862] note: bash[3488] exited with preempt_count 1
