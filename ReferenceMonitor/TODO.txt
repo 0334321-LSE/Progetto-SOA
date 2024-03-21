@@ -1,11 +1,10 @@
-- Sembra che ci sia un deadlock mentre provo a rimuovere i moduli, 
-credo sia dovuto alle kprobe o alle entry del monitor.
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Altro bug grave, il sistema va in crash quando provi a rimuovere un path in uno stato in cui non è permesso.
+
+- Aggiungi probe sulla remove
 
 - Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
 
-- Fai un interfaccia user con cui interagire col monitor.
+- Fai un interfaccia user con cui interagire col monitor. Attento all'inserimento di spazi nei path.
 
 - Chiedi a cobero quando è necesaario fare copyfrom user e quando esser direttamente usati.

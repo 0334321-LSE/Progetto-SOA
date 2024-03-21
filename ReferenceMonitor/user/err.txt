@@ -1,0 +1,51 @@
+ unable to handle page fault for address: 0000000100000004
+[  403.758427] #PF: supervisor read access in kernel mode
+[  403.758432] #PF: error_code(0x0000) - not-present page
+[  403.758435] PGD 0 P4D 0 
+[  403.758442] Oops: 0000 [#1] PREEMPT SMP NOPTI
+[  403.758447] CPU: 1 PID: 942 Comm: upowerd Tainted: G           OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  403.758453] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  403.758457] RIP: 0010:pre_handler+0x37/0xe0 [the_retprobe]
+[  403.758468] Code: 38 01 0f 86 a4 00 00 00 41 55 41 54 55 53 f0 ff 05 46 24 00 00 48 8b 3d d7 c1 4b cd 48 8b 5e 70 ba 00 10 00 00 be 20 0a 00 00 <4c> 8b 63 68 e8 50 55 34 cc 48 89 c5 48 85 c0 0f 84 86 00 00 00 ba
+[  403.758471] RSP: 0018:ffffbd844259fd50 EFLAGS: 00010202
+[  403.758474] RAX: ffffa0794e3bfd40 RBX: 00000000ffffff9c RCX: ffffa0794b798a80
+[  403.758476] RDX: 0000000000001000 RSI: 0000000000000a20 RDI: ffffa07940042d00
+[  403.758478] RBP: ffffa0794b798a80 R08: 0000000000000000 R09: 0000563d37c1c8e0
+[  403.758480] R10: 00000000ffffff9c R11: 0000000000000000 R12: ffffbd844259fdd0
+[  403.758482] R13: ffffbd844259fdd0 R14: ffffa07a51c9fea0 R15: ffffffff8d1565d5
+[  403.758485] FS:  00007f461bae0840(0000) GS:ffffa07a51c80000(0000) knlGS:0000000000000000
+[  403.758487] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  403.758489] CR2: 0000000100000004 CR3: 000000010b634003 CR4: 00000000000306e0
+[  403.758495] Call Trace:
+[  403.758501]  <TASK>
+[  403.758506]  ? __die_body.cold+0x1a/0x1f
+[  403.758519]  ? page_fault_oops+0xd2/0x2b0
+[  403.758528]  ? exc_page_fault+0x70/0x170
+[  403.758535]  ? asm_exc_page_fault+0x22/0x30
+[  403.758544]  ? do_sys_openat2+0x5/0x170
+[  403.758553]  ? pre_handler+0x37/0xe0 [the_retprobe]
+[  403.758559]  pre_handler_kretprobe+0x37/0x90
+[  403.758568]  ? do_sys_openat2+0x1/0x170
+[  403.758571]  kprobe_ftrace_handler+0x108/0x1b0
+[  403.758640]  0xffffffffc053b0c8
+[  403.758651]  ? do_sys_openat2+0x1/0x170
+[  403.758655]  do_sys_openat2+0x5/0x170
+[  403.758659]  __x64_sys_openat+0x6a/0xa0
+[  403.758662]  do_syscall_64+0x58/0xc0
+[  403.758667]  ? do_syscall_64+0x67/0xc0
+[  403.758669]  ? syscall_exit_to_user_mode+0x27/0x40
+[  403.758672]  ? do_syscall_64+0x67/0xc0
+[  403.758674]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  403.758682]  ? syscall_exit_to_user_mode+0x27/0x40
+[  403.758685]  ? do_syscall_64+0x67/0xc0
+[  403.758688]  ? do_syscall_64+0x67/0xc0
+[  403.758689]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  403.758698] RIP: 0033:0x7f461be9ef80
+[  403.758704] Code: 48 89 44 24 20 75 93 44 89 54 24 0c e8 39 d8 f8 ff 44 8b 54 24 0c 89 da 48 89 ee 41 89 c0 bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 77 38 44 89 c7 89 44 24 0c e8 8c d8 f8 ff 8b 44
+[  403.758708] RSP: 002b:00007ffe686b5100 EFLAGS: 00000293 ORIG_RAX: 0000000000000101
+[  403.758712] RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f461be9ef80
+[  403.758714] RDX: 0000000000000000 RSI: 0000563d37c1c8e0 RDI: 00000000ffffff9c
+[  403.758715] RBP: 0000563d37c1c8e0 R08: 0000000000000000 R09: 0000000000000020
+[  403.758717] R10: 0000000000000000 R11: 0000000000000293 R12: 0000000000000000
+[  403.758719] R13: 0000000000000000 R14: 0000563d37377b77 R15: 0000000000000001
+[  403.758722]  </TASK>

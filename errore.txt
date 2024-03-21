@@ -1,72 +1,275 @@
-make[2]: *** No rule to make target '/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/the_probe.o', needed by '/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/'.  Stop.
-make[1]: *** [/usr/src/linux-headers-6.1.0-13-common/Makefile:2039: /media/sf_shared-dir/Progetto-SOA/ReferenceMonitor] Error 2
-make[1]: Leaving directory '/usr/src/linux-headers-6.1.0-13-amd64'
-make: *** [Makefile:11: all] Error 2
-/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/user
 
-[  436.288645] BUG: unable to handle page fault for address: 0000563180ae43c2
-[  436.288650] #PF: supervisor read access in kernel mode
-[  436.288651] #PF: error_code(0x0000) - not-present page
-[  436.288653] PGD 12181e067 P4D 12181e067 PUD 103733067 PMD 1049ee067 PTE 0
-[  436.288657] Oops: 0000 [#1] PREEMPT SMP NOPTI
-[  436.288659] CPU: 3 PID: 3488 Comm: bash Tainted: G           OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
-[  436.288662] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
-[  436.288663] RIP: 0010:string+0x48/0xe0
-[  436.288668] Code: 3b 45 89 d1 45 31 c0 49 01 f9 66 45 85 d2 75 1a eb 1f 48 39 f7 73 02 88 07 48 83 c7 01 41 83 c0 01 48 83 c2 01 4c 39 cf 74 07 <0f> b6 02 84 c0 75 e1 48 89 f2 44 89 c6 e9 b6 e4 ff ff 48 c7 c0 d6
-[  436.288670] RSP: 0018:ffffab0302be3bb0 EFLAGS: 00010086
-[  436.288672] RAX: 0000563180ae33c2 RBX: ffffffffc0d930fb RCX: ffff0a00ffffff04
-[  436.288674] RDX: 0000563180ae43c2 RSI: ffffab0302be3ca8 RDI: ffffab0302be3cb5
-[  436.288675] RBP: ffffab0302be3c88 R08: 0000000000000000 R09: ffffab0402be3cb4
-[  436.288676] R10: ffffffffffffffff R11: 0000000000000000 R12: ffffab0302be3ca8
-[  436.288677] R13: ffffffffc0d930fb R14: 0000000000000008 R15: ffffab0302be3cb5
-[  436.288678] FS:  00007f5505f7e740(0000) GS:ffff9fcad1d80000(0000) knlGS:0000000000000000
-[  436.288680] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  436.288681] CR2: 0000563180ae43c2 CR3: 00000001069ba002 CR4: 00000000000306e0
-[  436.288684] Call Trace:
-[  436.288687]  <TASK>
-[  436.288689]  ? __die_body.cold+0x1a/0x1f
-[  436.288692]  ? page_fault_oops+0xd2/0x2b0
-[  436.288696]  ? exc_page_fault+0x70/0x170
-[  436.288699]  ? asm_exc_page_fault+0x22/0x30
-[  436.288706]  ? string+0x48/0xe0
-[  436.288707]  vsnprintf+0x32c/0x550
-[  436.288710]  vprintk_store+0x1c1/0x520
-[  436.288716]  vprintk_emit+0xec/0x280
-[  436.288718]  ? __x64_sys_openat+0x5/0xa0
-[  436.288721]  _printk+0x68/0x83
-[  436.288724]  handler_pre.cold+0x16/0xe40 [the_probe]
-[  436.288728]  ? __x64_sys_openat+0x1/0xa0
-[  436.288730]  kprobe_ftrace_handler+0x108/0x1b0
-[  436.288735]  0xffffffffc05610c8
-[  436.288738]  ? __ia32_sys_open+0xa0/0xa0
-[  436.288740]  ? __x64_sys_openat+0x1/0xa0
-[  436.288741]  __x64_sys_openat+0x5/0xa0
-[  436.288744]  do_syscall_64+0x58/0xc0
-[  436.288746]  ? do_user_addr_fault+0x1b0/0x580
-[  436.288748]  ? exit_to_user_mode_prepare+0x40/0x1e0
-[  436.288751]  entry_SYSCALL_64_after_hwframe+0x64/0xce
-[  436.288754] RIP: 0033:0x7f5506078f01
-[  436.288756] Code: 75 57 89 f0 25 00 00 41 00 3d 00 00 41 00 74 49 80 3d ea 26 0e 00 00 74 6d 89 da 48 89 ee bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 0f 87 93 00 00 00 48 8b 54 24 28 64 48 2b 14 25
-[  436.288757] RSP: 002b:00007ffdb8ceb0c0 EFLAGS: 00000202 ORIG_RAX: 0000000000000101
-[  436.288759] RAX: ffffffffffffffda RBX: 0000000000000802 RCX: 00007f5506078f01
-[  436.288760] RDX: 0000000000000802 RSI: 0000563180ae43c2 RDI: 00000000ffffff9c
-[  436.288762] RBP: 0000563180ae43c2 R08: 0000000000000000 R09: 00007f55061ad6a0
-[  436.288763] R10: 0000000000000000 R11: 0000000000000202 R12: 0000000000000000
-[  436.288764] R13: 00007ffdb8ceb3f0 R14: 0000563180b1aaf8 R15: 00007f55061db020
-[  436.288766]  </TASK>
-[  436.288767] Modules linked in: the_probe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) rfkill qrtr intel_rapl_msr intel_rapl_common intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd snd_intel8x0 cryptd snd_ac97_codec rapl ac97_bus joydev snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore ac evdev sg serio_raw binfmt_misc msr parport_pc ppdev lp parport loop dm_mod fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi sr_mod cdrom crc64_rocksoft crc64 crc_t10dif crct10dif_generic ata_generic vmwgfx ahci drm_ttm_helper libahci ata_piix ttm drm_kms_helper ohci_pci drm libata ohci_hcd ehci_pci crct10dif_pclmul crct10dif_common ehci_hcd crc32_pclmul scsi_mod usbcore crc32c_intel e1000 i2c_piix4 psmouse usb_common scsi_common battery video wmi button [last unloaded: the_rm(OE)]
-[  436.288825] CR2: 0000563180ae43c2
-[  436.288826] ---[ end trace 0000000000000000 ]---
-[  436.288845] RIP: 0010:string+0x48/0xe0
-[  436.288847] Code: 3b 45 89 d1 45 31 c0 49 01 f9 66 45 85 d2 75 1a eb 1f 48 39 f7 73 02 88 07 48 83 c7 01 41 83 c0 01 48 83 c2 01 4c 39 cf 74 07 <0f> b6 02 84 c0 75 e1 48 89 f2 44 89 c6 e9 b6 e4 ff ff 48 c7 c0 d6
-[  436.288849] RSP: 0018:ffffab0302be3bb0 EFLAGS: 00010086
-[  436.288851] RAX: 0000563180ae33c2 RBX: ffffffffc0d930fb RCX: ffff0a00ffffff04
-[  436.288852] RDX: 0000563180ae43c2 RSI: ffffab0302be3ca8 RDI: ffffab0302be3cb5
-[  436.288853] RBP: ffffab0302be3c88 R08: 0000000000000000 R09: ffffab0402be3cb4
-[  436.288854] R10: ffffffffffffffff R11: 0000000000000000 R12: ffffab0302be3ca8
-[  436.288855] R13: ffffffffc0d930fb R14: 0000000000000008 R15: ffffab0302be3cb5
-[  436.288856] FS:  00007f5505f7e740(0000) GS:ffff9fcad1d80000(0000) knlGS:0000000000000000
-[  436.288858] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  436.288859] CR2: 0000563180ae43c2 CR3: 00000001069ba002 CR4: 00000000000306e0
-[  436.288861] note: bash[3488] exited with irqs disabled
-[  436.288862] note: bash[3488] exited with preempt_count 1
+unable to handle page fault for address: 0000000000037cb8
+[  182.308005] #PF: supervisor read access in kernel mode
+[  182.308009] #PF: error_code(0x0000) - not-present page
+[  182.308012] PGD 0 P4D 0 
+[  182.308019] Oops: 0000 [#1] PREEMPT SMP NOPTI
+[  182.308096] CPU: 1 PID: 1436 Comm: gnome-shell Tainted: G           OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  182.308103] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  182.308106] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.308119] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.308124] RSP: 0018:ffffbaf8c2fb7d68 EFLAGS: 00010202
+[  182.308129] RAX: 0000000000037c50 RBX: ffff974d831a9950 RCX: 000000008a8da001
+[  182.308132] RDX: ffff974e91c9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.308135] RBP: ffff974d831a9950 R08: 0000000000000051 R09: 412f736e6f63692e
+[  182.308138] R10: 0000000000000006 R11: fffffffffffffffe R12: ffffffff91622158
+[  182.308141] R13: ffffbaf8c2fb7e68 R14: ffffbaf8c2fb7dc0 R15: 0000000000000000
+[  182.308145] FS:  00007fd7ec0912c0(0000) GS:ffff974e91c80000(0000) knlGS:0000000000000000
+[  182.308149] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.308152] CR2: 0000000000037cb8 CR3: 0000000102824001 CR4: 00000000000306e0
+[  182.308158] Call Trace:
+[  182.308162]  <TASK>
+[  182.308167]  ? __die_body.cold+0x1a/0x1f
+[  182.308176]  ? page_fault_oops+0xd2/0x2b0
+[  182.308183]  ? exc_page_fault+0x70/0x170
+[  182.308189]  ? asm_exc_page_fault+0x22/0x30
+[  182.308197]  ? do_syscall_64+0x58/0xc0
+[  182.308202]  ? handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.308212]  kretprobe_rethook_handler+0x41/0x60
+[  182.308220]  rethook_trampoline_handler+0x8c/0x130
+[  182.308227]  arch_rethook_trampoline_callback+0x36/0x50
+[  182.308234]  arch_rethook_trampoline+0x2c/0x60
+[  182.308242]  ? do_syscall_64+0x58/0xc0
+[  182.308245]  trace_clock_x86_tsc+0x20/0x20
+[  182.308252]  ? ksys_read+0xd4/0xf0
+[  182.308259]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.308265]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.308270]  ? do_syscall_64+0x67/0xc0
+[  182.308274]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.308278]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.308283]  ? do_syscall_64+0x67/0xc0
+[  182.308286]  ? do_syscall_64+0x67/0xc0
+[  182.308290]  ? do_syscall_64+0x67/0xc0
+[  182.308293]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  182.308300] RIP: 0033:0x7fd7f0916f80
+[  182.308305] Code: 48 89 44 24 20 75 93 44 89 54 24 0c e8 39 d8 f8 ff 44 8b 54 24 0c 89 da 48 89 ee 41 89 c0 bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 77 38 44 89 c7 89 44 24 0c e8 8c d8 f8 ff 8b 44
+[  182.308309] RSP: 002b:00007ffd7dbca890 EFLAGS: 00000293 ORIG_RAX: 0000000000000101
+[  182.308314] RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007fd7f0916f80
+[  182.308317] RDX: 0000000000000000 RSI: 000055e252decc70 RDI: 00000000ffffff9c
+[  182.308320] RBP: 000055e252decc70 R08: 0000000000000000 R09: 0000000000000001
+[  182.308323] R10: 0000000000000000 R11: 0000000000000293 R12: 000055e252decc70
+[  182.308325] R13: 00007fd7ed652093 R14: 0000000000000001 R15: 000055e251fac3d0
+[  182.308330]  </TASK>
+[  182.308332] Modules linked in: the_retprobe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) intel_rapl_msr intel_rapl_common rfkill qrtr intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd cryptd rapl snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore binfmt_misc joydev ac evdev serio_raw sg msr parport_pc ppdev lp parport dm_mod loop fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi crc64_rocksoft crc64 crc_t10dif crct10dif_generic sr_mod cdrom ahci ata_generic ohci_pci ohci_hcd libahci ehci_pci ehci_hcd ata_piix vmwgfx drm_ttm_helper libata ttm crct10dif_pclmul drm_kms_helper crct10dif_common usbcore crc32_pclmul psmouse crc32c_intel drm video scsi_mod wmi i2c_piix4 e1000 battery usb_common scsi_common button
+[  182.308496] CR2: 0000000000037cb8
+[  182.308500] ---[ end trace 0000000000000000 ]---
+[  182.308503] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.308555] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.308559] RSP: 0018:ffffbaf8c2fb7d68 EFLAGS: 00010202
+[  182.308564] RAX: 0000000000037c50 RBX: ffff974d831a9950 RCX: 000000008a8da001
+[  182.308566] RDX: ffff974e91c9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.308569] RBP: ffff974d831a9950 R08: 0000000000000051 R09: 412f736e6f63692e
+[  182.308572] R10: 0000000000000006 R11: fffffffffffffffe R12: ffffffff91622158
+[  182.308575] R13: ffffbaf8c2fb7e68 R14: ffffbaf8c2fb7dc0 R15: 0000000000000000
+[  182.308578] FS:  00007fd7ec0912c0(0000) GS:ffff974e91c80000(0000) knlGS:0000000000000000
+[  182.308582] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.308585] CR2: 0000000000037cb8 CR3: 0000000102824001 CR4: 00000000000306e0
+[  182.308590] note: gnome-shell[1436] exited with irqs disabled
+[  182.308593] note: gnome-shell[1436] exited with preempt_count 1
+[  182.353442] BUG: unable to handle page fault for address: 0000000000037cb8
+[  182.353447] #PF: supervisor read access in kernel mode
+[  182.353449] #PF: error_code(0x0000) - not-present page
+[  182.353451] PGD 0 P4D 0 
+[  182.353453] Oops: 0000 [#2] PREEMPT SMP NOPTI
+[  182.353455] CPU: 0 PID: 1812 Comm: Xwayland Tainted: G      D    OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  182.353458] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  182.353459] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.353465] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.353467] RSP: 0018:ffffbaf8c3e4bd58 EFLAGS: 00010202
+[  182.353469] RAX: 0000000000037c50 RBX: ffff974d831a9490 RCX: 0000000087e42000
+[  182.353470] RDX: ffff974e91c1fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.353471] RBP: ffff974d831a9490 R08: 0000000000000000 R09: ffff974d82234048
+[  182.353473] R10: 0000000000000000 R11: 0000000000000002 R12: ffffffff91622158
+[  182.353474] R13: ffffbaf8c3e4be58 R14: ffffbaf8c3e4bdb0 R15: 0000000000000000
+[  182.353475] FS:  00007f5ceb1598c0(0000) GS:ffff974e91c00000(0000) knlGS:0000000000000000
+[  182.353477] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.353478] CR2: 0000000000037cb8 CR3: 000000010336a004 CR4: 00000000000306f0
+[  182.353481] Call Trace:
+[  182.353483]  <TASK>
+[  182.353485]  ? __die_body.cold+0x1a/0x1f
+[  182.353489]  ? page_fault_oops+0xd2/0x2b0
+[  182.353492]  ? exc_page_fault+0x70/0x170
+[  182.353495]  ? asm_exc_page_fault+0x22/0x30
+[  182.353498]  ? do_syscall_64+0x58/0xc0
+[  182.353500]  ? handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.353504]  kretprobe_rethook_handler+0x41/0x60
+[  182.353508]  rethook_trampoline_handler+0x8c/0x130
+[  182.353511]  arch_rethook_trampoline_callback+0x36/0x50
+[  182.353514]  arch_rethook_trampoline+0x2c/0x60
+[  182.353517]  ? do_syscall_64+0x58/0xc0
+[  182.353519]  trace_clock_x86_tsc+0x20/0x20
+[  182.353521]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.353524]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.353526]  ? do_syscall_64+0x67/0xc0
+[  182.353527]  ? __x64_sys_fcntl+0x90/0xc0
+[  182.353530]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.353532]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.353534]  ? do_syscall_64+0x67/0xc0
+[  182.353535]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.353537]  ? do_syscall_64+0x67/0xc0
+[  182.353538]  ? do_syscall_64+0x67/0xc0
+[  182.353539]  ? do_syscall_64+0x67/0xc0
+[  182.353541]  ? do_syscall_64+0x67/0xc0
+[  182.353542]  ? do_syscall_64+0x67/0xc0
+[  182.353543]  ? do_syscall_64+0x67/0xc0
+[  182.353544]  ? do_syscall_64+0x67/0xc0
+[  182.353546]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  182.353549] RIP: 0033:0x7f5ceb7cff01
+[  182.353551] Code: 75 57 89 f0 25 00 00 41 00 3d 00 00 41 00 74 49 80 3d ea 26 0e 00 00 74 6d 89 da 48 89 ee bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 0f 87 93 00 00 00 48 8b 54 24 28 64 48 2b 14 25
+[  182.353553] RSP: 002b:00007fffc441bc70 EFLAGS: 00000202 ORIG_RAX: 0000000000000101
+[  182.353587] RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f5ceb7cff01
+[  182.353589] RDX: 0000000000000000 RSI: 00007fffc441bcf0 RDI: 00000000ffffff9c
+[  182.353590] RBP: 00007fffc441bcf0 R08: 0000000000000000 R09: 0000000000000064
+[  182.353591] R10: 0000000000000000 R11: 0000000000000202 R12: 000055ad0782dcf8
+[  182.353592] R13: 000055ad0782dd00 R14: 000055ad068bf434 R15: 000055ad0781d660
+[  182.353595]  </TASK>
+[  182.353596] Modules linked in: the_retprobe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) intel_rapl_msr intel_rapl_common rfkill qrtr intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd cryptd rapl snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore binfmt_misc joydev ac evdev serio_raw sg msr parport_pc ppdev lp parport dm_mod loop fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi crc64_rocksoft crc64 crc_t10dif crct10dif_generic sr_mod cdrom ahci ata_generic ohci_pci ohci_hcd libahci ehci_pci ehci_hcd ata_piix vmwgfx drm_ttm_helper libata ttm crct10dif_pclmul drm_kms_helper crct10dif_common usbcore crc32_pclmul psmouse crc32c_intel drm video scsi_mod wmi i2c_piix4 e1000 battery usb_common scsi_common button
+[  182.353648] CR2: 0000000000037cb8
+[  182.353650] ---[ end trace 0000000000000000 ]---
+[  182.353651] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.353656] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.353657] RSP: 0018:ffffbaf8c2fb7d68 EFLAGS: 00010202
+[  182.353659] RAX: 0000000000037c50 RBX: ffff974d831a9950 RCX: 000000008a8da001
+[  182.353660] RDX: ffff974e91c9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.353661] RBP: ffff974d831a9950 R08: 0000000000000051 R09: 412f736e6f63692e
+[  182.353662] R10: 0000000000000006 R11: fffffffffffffffe R12: ffffffff91622158
+[  182.353663] R13: ffffbaf8c2fb7e68 R14: ffffbaf8c2fb7dc0 R15: 0000000000000000
+[  182.353664] FS:  00007f5ceb1598c0(0000) GS:ffff974e91c00000(0000) knlGS:0000000000000000
+[  182.353666] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.353667] CR2: 0000000000037cb8 CR3: 000000010336a004 CR4: 00000000000306f0
+[  182.353669] note: Xwayland[1812] exited with irqs disabled
+[  182.353671] note: Xwayland[1812] exited with preempt_count 1
+[  182.356283] BUG: unable to handle page fault for address: 0000000000037cb8
+[  182.356288] #PF: supervisor read access in kernel mode
+[  182.356289] #PF: error_code(0x0000) - not-present page
+[  182.356291] PGD 10cd00067 P4D 10cd00067 PUD 10cd14067 PMD 0 
+[  182.356294] Oops: 0000 [#3] PREEMPT SMP NOPTI
+[  182.356311] CPU: 2 PID: 1688 Comm: VBoxClient Tainted: G      D    OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  182.356314] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  182.356315] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.356320] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.356322] RSP: 0018:ffffbaf8c3cabd70 EFLAGS: 00010206
+[  182.356324] RAX: 0000000000037c50 RBX: ffff974d831a9a90 RCX: 000000005f74c002
+[  182.356326] RDX: ffff974e91d1fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.356327] RBP: ffff974d831a9a90 R08: 0000000000000064 R09: ffff974d80424700
+[  182.356328] R10: ffffbaf8c3cabe10 R11: ffff974d8f82f310 R12: ffffffff91622158
+[  182.356329] R13: ffffbaf8c3cabe70 R14: ffffbaf8c3cabdc8 R15: 0000000000000000
+[  182.356331] FS:  00007fe8e63fe6c0(0000) GS:ffff974e91d00000(0000) knlGS:0000000000000000
+[  182.356332] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.356334] CR2: 0000000000037cb8 CR3: 000000010a1de006 CR4: 00000000000306e0
+[  182.356337] Call Trace:
+[  182.356339]  <TASK>
+[  182.356341]  ? __die_body.cold+0x1a/0x1f
+[  182.356346]  ? page_fault_oops+0xd2/0x2b0
+[  182.356349]  ? exc_page_fault+0x70/0x170
+[  182.356352]  ? asm_exc_page_fault+0x22/0x30
+[  182.356355]  ? do_syscall_64+0x58/0xc0
+[  182.356357]  ? handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.356361]  kretprobe_rethook_handler+0x41/0x60
+[  182.356365]  rethook_trampoline_handler+0x8c/0x130
+[  182.356368]  arch_rethook_trampoline_callback+0x36/0x50
+[  182.356371]  arch_rethook_trampoline+0x2c/0x60
+[  182.356374]  ? do_syscall_64+0x58/0xc0
+[  182.356376]  trace_clock_x86_tsc+0x20/0x20
+[  182.356379]  ? switch_fpu_return+0x4c/0xd0
+[  182.356382]  ? exit_to_user_mode_prepare+0x14b/0x1e0
+[  182.356384]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.356387]  ? do_syscall_64+0x67/0xc0
+[  182.356388]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.356390]  ? do_syscall_64+0x67/0xc0
+[  182.356391]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.356393]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  182.356397] RIP: 0033:0x7fe8e767d75d
+[  182.356399] Code: 48 89 54 24 e0 41 83 e2 40 75 32 89 f0 25 00 00 41 00 3d 00 00 41 00 74 24 89 f2 b8 01 01 00 00 48 89 fe bf 9c ff ff ff 0f 05 <48> 3d 00 f0 ff ff 77 33 c3 66 2e 0f 1f 84 00 00 00 00 00 48 8d 44
+[  182.356401] RSP: 002b:00007fe8e63fd368 EFLAGS: 00000287 ORIG_RAX: 0000000000000101
+[  182.356403] RAX: ffffffffffffffda RBX: 00007fe8e7411e09 RCX: 00007fe8e767d75d
+[  182.356404] RDX: 0000000000080000 RSI: 00007fe8e768509c RDI: 00000000ffffff9c
+[  182.356405] RBP: 00007fe8e7690200 R08: 0000000000000000 R09: 00007fe8e7411e09
+[  182.356406] R10: 0000000000000000 R11: 0000000000000287 R12: ffffffffffffffff
+[  182.356407] R13: 0000000000000001 R14: 00007fe8e768f020 R15: 00007fe8e7464e28
+[  182.356410]  </TASK>
+[  182.356411] Modules linked in: the_retprobe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) intel_rapl_msr intel_rapl_common rfkill qrtr intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd cryptd rapl snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore binfmt_misc joydev ac evdev serio_raw sg msr parport_pc ppdev lp parport dm_mod loop fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi crc64_rocksoft crc64 crc_t10dif crct10dif_generic sr_mod cdrom ahci ata_generic ohci_pci ohci_hcd libahci ehci_pci ehci_hcd ata_piix vmwgfx drm_ttm_helper libata ttm crct10dif_pclmul drm_kms_helper crct10dif_common usbcore crc32_pclmul psmouse crc32c_intel drm video scsi_mod wmi i2c_piix4 e1000 battery usb_common scsi_common button
+[  182.356547] CR2: 0000000000037cb8
+[  182.356550] ---[ end trace 0000000000000000 ]---
+[  182.356551] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.356558] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.356560] RSP: 0018:ffffbaf8c2fb7d68 EFLAGS: 00010202
+[  182.356562] RAX: 0000000000037c50 RBX: ffff974d831a9950 RCX: 000000008a8da001
+[  182.356564] RDX: ffff974e91c9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.356565] RBP: ffff974d831a9950 R08: 0000000000000051 R09: 412f736e6f63692e
+[  182.356567] R10: 0000000000000006 R11: fffffffffffffffe R12: ffffffff91622158
+[  182.356568] R13: ffffbaf8c2fb7e68 R14: ffffbaf8c2fb7dc0 R15: 0000000000000000
+[  182.356570] FS:  00007fe8e63fe6c0(0000) GS:ffff974e91d00000(0000) knlGS:0000000000000000
+[  182.356573] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.356574] CR2: 0000000000037cb8 CR3: 000000010a1de006 CR4: 00000000000306e0
+[  182.356577] note: VBoxClient[1688] exited with irqs disabled
+[  182.356665] note: VBoxClient[1688] exited with preempt_count 1
+[  182.358967] BUG: unable to handle page fault for address: 0000000000037cb8
+[  182.358971] #PF: supervisor read access in kernel mode
+[  182.358973] #PF: error_code(0x0000) - not-present page
+[  182.358974] PGD 0 P4D 0 
+[  182.359013] Oops: 0000 [#4] PREEMPT SMP NOPTI
+[  182.359016] CPU: 3 PID: 1265 Comm: systemd Tainted: G      D    OE      6.1.0-18-amd64 #1  Debian 6.1.76-1
+[  182.359018] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  182.359020] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.359025] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.359027] RSP: 0018:ffffbaf8c27d7d40 EFLAGS: 00010202
+[  182.359029] RAX: 0000000000037c50 RBX: ffff974d831a9c90 RCX: 00000000b3c32003
+[  182.359030] RDX: ffff974e91d9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.359032] RBP: ffff974d831a9c90 R08: 0000000000000064 R09: ffff974d81f3fd78
+[  182.359033] R10: 0000000000000000 R11: 0000000000000000 R12: ffffffff91622158
+[  182.359034] R13: ffffbaf8c27d7e40 R14: ffffbaf8c27d7d98 R15: 0000000000000000
+[  182.359036] FS:  00007fe1f4ac0940(0000) GS:ffff974e91d80000(0000) knlGS:0000000000000000
+[  182.359037] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.359039] CR2: 0000000000037cb8 CR3: 0000000105be6001 CR4: 00000000000306e0
+[  182.359041] Call Trace:
+[  182.359043]  <TASK>
+[  182.359046]  ? __die_body.cold+0x1a/0x1f
+[  182.359050]  ? page_fault_oops+0xd2/0x2b0
+[  182.359053]  ? exc_page_fault+0x70/0x170
+[  182.359056]  ? asm_exc_page_fault+0x22/0x30
+[  182.359060]  ? do_syscall_64+0x58/0xc0
+[  182.359062]  ? handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.359066]  kretprobe_rethook_handler+0x41/0x60
+[  182.359070]  rethook_trampoline_handler+0x8c/0x130
+[  182.359074]  arch_rethook_trampoline_callback+0x36/0x50
+[  182.359077]  arch_rethook_trampoline+0x2c/0x60
+[  182.359080]  ? do_syscall_64+0x58/0xc0
+[  182.359082]  trace_clock_x86_tsc+0x20/0x20
+[  182.359085]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.359087]  ? do_syscall_64+0x67/0xc0
+[  182.359088]  ? switch_fpu_return+0x4c/0xd0
+[  182.359091]  ? exit_to_user_mode_prepare+0x14b/0x1e0
+[  182.359094]  ? syscall_exit_to_user_mode+0x27/0x40
+[  182.359096]  ? do_syscall_64+0x67/0xc0
+[  182.359097]  ? exit_to_user_mode_prepare+0x40/0x1e0
+[  182.359099]  entry_SYSCALL_64_after_hwframe+0x64/0xce
+[  182.359102] RIP: 0033:0x7fe1f4f16f01
+[  182.359104] Code: 75 57 89 f0 25 00 00 41 00 3d 00 00 41 00 74 49 80 3d ea 26 0e 00 00 74 6d 89 da 48 89 ee bf 9c ff ff ff b8 01 01 00 00 0f 05 <48> 3d 00 f0 ff ff 0f 87 93 00 00 00 48 8b 54 24 28 64 48 2b 14 25
+[  182.359106] RSP: 002b:00007ffe8a16e0d0 EFLAGS: 00000202 ORIG_RAX: 0000000000000101
+[  182.359108] RAX: ffffffffffffffda RBX: 0000000000080000 RCX: 00007fe1f4f16f01
+[  182.359109] RDX: 0000000000080000 RSI: 00007ffe8a16e260 RDI: 00000000ffffff9c
+[  182.359110] RBP: 00007ffe8a16e260 R08: 0000000000000008 R09: 0000000000000001
+[  182.359112] R10: 0000000000000000 R11: 0000000000000202 R12: 00007ffe8a16e260
+[  182.359113] R13: 00007fe1f52551cd R14: 0000000000000001 R15: 0000000000000000
+[  182.359115]  </TASK>
+[  182.359116] Modules linked in: the_retprobe(OE) the_usctm(OE) the_rm(OE) snd_seq_dummy snd_hrtimer snd_seq snd_seq_device vboxsf(OE) intel_rapl_msr intel_rapl_common rfkill qrtr intel_pmc_core ghash_clmulni_intel sha512_ssse3 sha512_generic sha256_ssse3 sha1_ssse3 aesni_intel crypto_simd cryptd rapl snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_timer pcspkr snd vboxguest(OE) soundcore binfmt_misc joydev ac evdev serio_raw sg msr parport_pc ppdev lp parport dm_mod loop fuse efi_pstore configfs ip_tables x_tables autofs4 ext4 crc16 mbcache jbd2 crc32c_generic hid_generic usbhid hid sd_mod t10_pi crc64_rocksoft crc64 crc_t10dif crct10dif_generic sr_mod cdrom ahci ata_generic ohci_pci ohci_hcd libahci ehci_pci ehci_hcd ata_piix vmwgfx drm_ttm_helper libata ttm crct10dif_pclmul drm_kms_helper crct10dif_common usbcore crc32_pclmul psmouse crc32c_intel drm video scsi_mod wmi i2c_piix4 e1000 battery usb_common scsi_common button
+[  182.359217] CR2: 0000000000037cb8
+[  182.359219] ---[ end trace 0000000000000000 ]---
+[  182.359220] RIP: 0010:handler_pre_prova.cold+0x1a/0xda9 [the_retprobe]
+[  182.359225] Code: c7 c7 ac 50 da c0 e8 9d 0b 84 d0 e9 73 fe ff ff 53 f0 ff 05 11 22 00 00 48 8b 46 70 48 c7 c7 e7 50 da c0 48 c7 c6 60 50 da c0 <48> 8b 58 68 48 89 da e8 72 0b 84 d0 48 c7 c6 60 50 da c0 48 c7 c7
+[  182.359227] RSP: 0018:ffffbaf8c2fb7d68 EFLAGS: 00010202
+[  182.359228] RAX: 0000000000037c50 RBX: ffff974d831a9950 RCX: 000000008a8da001
+[  182.359230] RDX: ffff974e91c9fea0 RSI: ffffffffc0da5060 RDI: ffffffffc0da50e7
+[  182.359231] RBP: ffff974d831a9950 R08: 0000000000000051 R09: 412f736e6f63692e
+[  182.359232] R10: 0000000000000006 R11: fffffffffffffffe R12: ffffffff91622158
+[  182.359233] R13: ffffbaf8c2fb7e68 R14: ffffbaf8c2fb7dc0 R15: 0000000000000000
+[  182.359234] FS:  00007fe1f4ac0940(0000) GS:ffff974e91d80000(0000) knlGS:0000000000000000
+[  182.359236] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  182.359237] CR2: 0000000000037cb8 CR3: 0000000105be6001 CR4: 00000000000306e0
+[  182.359239] note: systemd[1265] exited with irqs disabled
+[  182.359318] note: systemd[1265] exited with preempt_count 1
+[  182.405409] rfkill: input handler enabled
+[  184.826920] rfkill: input handler disabled
+[  189.108478] rfkill: input handler enabled
+[  191.124163] rfkill: input handler disabled

@@ -247,36 +247,23 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 		return-EINVAL; // Monitor doesn't exists
 	}
 
-	/*printk("%s: LOCK \n",MODNAME);
-	spin_lock(&monitor->lock);*/
-
 	// Check monitor state  (it can be reconfigured only in REC-OFF or REC-ON)
 	if ( monitor->state == 0 || monitor->state == 2){
-		/*spin_unlock(&monitor->lock);
-		printk("%s: UNLOCK \n",MODNAME);*/
 		printk("%s: Can't re-configure monitor in %s state.\n", MODNAME, states[monitor->state]);
 		return -EPERM; // State is wrong
 	}
 
 	// Check password length to avoid some kind of overflow vulnerabilities
 	if (strlen(password)>PASW_MAX_LENGTH){
-		/*spin_unlock(&monitor->lock);
-		printk("%s: UNLOCK \n",MODNAME);*/
 		printk("%s: Password is to big.\n",MODNAME);
 		return -EINVAL;  // To big password 
 	}
 
 	// Check password
 	if (strncmp(password, monitor->password, strlen(monitor->password)) != 0) {
-		/*spin_unlock(&monitor->lock);
-		printk("%s: UNLOCK \n",MODNAME);*/
 		printk("%s: Password isn't valid.\n",MODNAME);
 		return -EINVAL;  // Not valid password 
 	}
-	
-	/*spin_unlock(&monitor->lock);
-	printk("%s: UNLOCK \n",MODNAME);*/
-
 	
 	// kmalloc path into kernel space, PATH_MAX is the maximium size of a path in the kernel.
 	kernel_path = kmalloc(PATH_MAX, GFP_KERNEL);
@@ -308,6 +295,12 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 		}
 
 		entry->path_name = kernel_path;
+		if (!entry->path_name){
+			printk("%s: Entry pathname can't be allocated \n",MODNAME);
+			kfree(kernel_path);
+			kfree(entry);
+            return -ENOMEM; 
+		}
 
 		// Acquire lock to work with the list
 		spin_lock(&monitor->lock);

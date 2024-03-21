@@ -31,5 +31,5 @@ struct reference_monitor {
     spinlock_t lock;
 };
 
-int file_in_protected_paths(const char* filename);
+inline int file_in_protected_paths(const char* filename);
 #endif /* REFERENCE_MONITOR_H */

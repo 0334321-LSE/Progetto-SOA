@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "reference_monitor.h": "c"
+        "reference_monitor.h": "c",
+        "open_flags.h": "c"
     }
 }
