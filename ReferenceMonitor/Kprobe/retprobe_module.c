@@ -10,21 +10,24 @@
 #include <linux/slab.h>
 #include <linux/fdtable.h>
 #include <linux/fs_struct.h>
+#include <linux/namei.h>
+#include <linux/dcache.h>
 
 #include "open_flags.h"
 #include "../reference_monitor.h"
-
-
 #define MODNAME "RPROB-MOD"
+
 MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
 MODULE_DESCRIPTION("This module install kretprobe do_filp_open \
 and check if black-listed path is opened in write mode. \
 PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the specific system call calling convention of this architectures.");
 
-#define target_func "do_filp_open"
- 
+#define open_func "do_filp_open"
+#define unlink_func "security_path_unlink"
 
-static unsigned long audit_counter = 0;//just to audit how many times krobe has been called
+static unsigned long open_audit_counter = 0;//just to audit how many times open_krobe has been called
+static unsigned long unlink_audit_counter = 0;//just to audit how many times unlink_krobe has been called
+
 
 void print_flag(int flags){
 // Stampa le flags di apertura del file
@@ -40,59 +43,20 @@ void print_flag(int flags){
         printk("%s: Flags O_TRUNC \n", MODNAME);
 }
 
-void get_abs_path(int dfd){
-    
-    char *tmp = (char*)__get_free_page(GFP_ATOMIC);
-    struct fd fd;
-    struct file *dir_file;
-    struct path pwd_path;
-    struct dentry *dentry;
-    char *absolute_path = NULL;
-
-    // Ottenere il dentry per la directory di lavoro corrente
-    if (dfd == AT_FDCWD) {
-        pwd_path = current->fs->pwd;
-        dentry = pwd_path.dentry;
-    } else {
-        // Ottieni il file associato al directory file descriptor
-        fd = fdget(dfd);
-        if (! fd.file) {
-            // Gestisci l'errore se il file non è valido
-            printk("%s impossibile ottenere il file associato al directory file descriptor %d\n", MODNAME, dfd);
-            return;
-        }
-        dir_file = fd.file;
-
-        // Ottieni il percorso assoluto associato al file
-        absolute_path = d_path(&dir_file->f_path, tmp, PATH_MAX);
-        printk("%s: Path %s\n", MODNAME, absolute_path);
-
-        // Rilascia la struttura file
-        fdput(fd);
-
-        return;
-    }
-
-    // Convertire il dentry in un percorso assoluto
-    absolute_path = kmalloc(PATH_MAX, GFP_KERNEL);
-    if (absolute_path) {
-        char *path_ptr = dentry_path_raw(dentry, absolute_path, PATH_MAX);
-        if (IS_ERR(path_ptr)) {
-            // Gestione dell'errore
-            printk("%s erorre path phtr\n", MODNAME);
-            kfree(absolute_path);
-            absolute_path = NULL;
-        }
-        printk("%s: Path %s\n", MODNAME, path_ptr);
-    }
-   
-
-    return;
-
-
+int register_hook(struct kretprobe *the_probe, char * the_func){
+    int ret;
+    ret = register_kretprobe(the_probe);
+	if (ret < 0) {
+        printk("%s: Failed to register kprobe: %d\n", MODNAME, ret);
+		return ret;
+	}
+    printk("%s: Kretprobe registered on %s \n",MODNAME,the_func);
+	
+	return 0;
 }
 
-static int pre_handler(struct kprobe *p, struct pt_regs *the_regs){
+// OPEN HANDLER 
+static int open_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     // do_filp_open pre handler
 
     const char *pathname;
@@ -106,7 +70,7 @@ static int pre_handler(struct kprobe *p, struct pt_regs *the_regs){
         goto end;
 
 
-    atomic_inc((atomic_t*)&audit_counter);
+    atomic_inc((atomic_t*)&open_audit_counter);
 
     // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
     /* do filp open definition: 
@@ -123,11 +87,9 @@ static int pre_handler(struct kprobe *p, struct pt_regs *the_regs){
     op_flags = (struct open_flags *) the_regs->dx; 
     flags = op_flags->open_flag;
     
-  
-
     // Check if the file is opened WRITE-ONLY or READ-WRITE
     if (flags & O_WRONLY || flags & O_RDWR){
-        get_abs_path(dfd);
+        
         // Check if file is protected
         if (file_in_protected_paths(pathname)){
             // ADD WRITE-REPORT ON LOG FILE
@@ -144,40 +106,81 @@ end:
     return 1;
 }
 
-static int post_handler(struct kretprobe_instance *ri, struct pt_regs *the_regs) {
+static int open_post_handler(struct kretprobe_instance *ri, struct pt_regs *the_regs) {
     the_regs->ax = -1; 
-    printk("%s: Modified return value in post handler\n", MODNAME);
+    printk("%s: Open blocked\n", MODNAME);
 
     return 0;
 }
 
-static struct kretprobe retprobe;  
+/* UNLINK HANDLER */
+static int unlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    struct dentry *dentry;
+    struct inode *target; 
+
+    // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
+    /*int vfs_unlink(struct mnt_idmap *idmap, struct inode *dir,
+	       struct dentry *dentry, struct inode **delegated_inode) */
+    //Dentry is the third parameter, from this can be retrieved the inode of the file.
+    
+    /*int security_path_unlink(const struct path *dir, struct dentry *dentry)*/
+    //Dentry is the second parameter, from this can be retrieved the inode of the file.
+    dentry = (struct dentry*) the_regs->si;
+    target = dentry->d_inode;
+    atomic_inc((atomic_t*)&unlink_audit_counter);
+
+    if(inode_in_protected_paths(target->i_ino)){
+        printk("%s: Unlink on %s blocked correctly \n", MODNAME,dentry->d_name.name);
+        return 0;
+    }
+
+    return 1;
+}
+
+static int unlink_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    the_regs->ax = -1;
+    printk("%s: Unlink blocked\n", MODNAME);
+
+    return 0;
+}
+
+static struct kretprobe open_retprobe = {
+    .kp.symbol_name = open_func, // Nome della funzione da intercettare
+    .handler = open_post_handler, // Gestore dell'uscita della kretprobe
+    .entry_handler = open_pre_handler, // Gestore dell'entrata della kretprobe
+    .maxactive = -1 // Numero massimo di kretprobes attive, -1 per il valore predefinito
+};
+
+
+static struct kretprobe unlink_retprobe = {
+    .kp.symbol_name = unlink_func, // Nome della funzione da intercettare
+    .handler = unlink_post_handler, // Gestore dell'uscita della kretprobe
+    .entry_handler = unlink_pre_handler, // Gestore dell'entrata della kretprobe
+    .maxactive = -1 // Numero massimo di kretprobes attive, -1 per il valore predefinito
+};
 
 static int hook_init(void) {
-
-	int ret;
+ 
+    // OPEN
+    if ( register_hook(&open_retprobe, open_func)  < 0)
+        return -1;
+    // UNLINK
+    if ( register_hook(&unlink_retprobe, unlink_func) < 0)
+        return -1;
     
-	retprobe.kp.symbol_name = target_func;
-	retprobe.handler = (kretprobe_handler_t)post_handler;
-	retprobe.entry_handler = (kretprobe_handler_t)pre_handler;
-	retprobe.maxactive = -1; //lets' go for the default number of active kretprobes manageable by the kernel
-
-	ret = register_kretprobe(&retprobe);
-	if (ret < 0) {
-        printk("%s: Failed to register kprobe: %d\n", MODNAME, ret);
-		return ret;
-	}
-    printk("%s: Kretprobe registered on %s \n",MODNAME,target_func);
-	
-	return 0;
+    return 0;
 }
+
+
 
 static void  hook_exit(void) {
 
-	unregister_kretprobe(&retprobe);
+	unregister_kretprobe(&open_retprobe);
 
-    printk("%s: %s hook invoked %lu times\n",MODNAME, target_func ,audit_counter);
-    printk("%s: Kretprobe unregistered\n",MODNAME);
+    printk("%s: %s hook invoked %lu times\n",MODNAME, open_func ,open_audit_counter);
+    printk("%s: %s hook invoked %lu times\n",MODNAME, unlink_func ,unlink_audit_counter);
+
+    printk("%s: Kretprobes unregistered\n",MODNAME);
 
 }
 

@@ -56,7 +56,6 @@ void reference_monitor_cleanup(void) {
     struct protected_path *entry, *tmp;
 
     // Libera tutti i percorsi protetti nella lista
-    printk("%s: LOCK \n",MODNAME);
     spin_lock(&monitor->lock);
 
     list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
@@ -67,7 +66,6 @@ void reference_monitor_cleanup(void) {
     // Dealloca la memoria per la password
     kfree(monitor->password);
     spin_unlock(&monitor->lock);
-    printk("%s: UNLOCK \n",MODNAME);
 
 }
 

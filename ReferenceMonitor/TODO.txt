@@ -1,7 +1,19 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
 
-- Aggiungi probe sulla remove
+- Aggiungi probe sull'unlink OK
+
+- Aggiungi probe su rmdir.
+
+- Rimuovi il bug sulle dipendenze del modulo.
+
+- Rimuovi il bug di "execution atomic".
+
+- Aggiungi una system call per stampare i path protetti.
+
+- Implementa la scrittura sul log dei file/directory protetti (in defered work)
+
+- Aggiung probe su vfs_create e vfs_remove per gestire aggiunte e rimozioni su directory
 
 - Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
 

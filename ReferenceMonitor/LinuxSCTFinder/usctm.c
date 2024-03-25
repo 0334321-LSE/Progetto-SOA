@@ -240,7 +240,7 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 
 	char *kernel_path;
 	struct protected_path *entry, *tmp;
-	
+
 	// Check monitor
 	if ( !monitor ){
 		printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
@@ -299,7 +299,16 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 			printk("%s: Entry pathname can't be allocated \n",MODNAME);
 			kfree(kernel_path);
 			kfree(entry);
-            return -ENOMEM; 
+            return -ENOMEM;
+
+		}
+
+		entry->inode_number = get_inode_from_path(kernel_path);
+		if (entry->inode_number == 0){
+			printk("%s: Entry inode number can't be found \n",MODNAME);
+			kfree(kernel_path);
+			kfree(entry);
+            return -ENOENT; 
 		}
 
 		// Acquire lock to work with the list
@@ -309,7 +318,7 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 
 		spin_unlock(&monitor->lock);
 
-		printk("%s: Path %s added successfully by %d\n",MODNAME, kernel_path,current->pid);
+		printk("%s: Path %s with inode: %ld added successfully by %d\n",MODNAME, kernel_path, entry->inode_number ,current->pid);
 
 		break;
 		

@@ -37,7 +37,7 @@ PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the s
 #define get(regs)	regs = the_regs;
 #endif
 
-static unsigned long audit_counter = 0;//just to audit how many times krobe has been called
+static unsigned long open_audit_counter = 0;//just to audit how many times krobe has been called
 
 void print_flag(int flags){
 // Stampa le flags di apertura del file
@@ -64,7 +64,7 @@ void print_flag(int flags){
         if(monitor->state == 0 || monitor->state == 1)
             return 0;
         
-        atomic_inc((atomic_t*)&audit_counter);
+        atomic_inc((atomic_t*)&open_audit_counter);
         get(regs);//get the actual address of the CPU image seen by the system call (or its wrapper)
 
         // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
@@ -141,7 +141,7 @@ void print_flag(int flags){
 #endif
 
 static struct kprobe kp = {
-    .symbol_name = target_func,
+    .symbol_name = open_func,
     #ifdef SYS_OPENAT
         .pre_handler = (kprobe_pre_handler_t) handler_pre,
     #else 
@@ -171,7 +171,7 @@ static void __exit kprobe_exit(void)
 {
     unregister_kprobe(&kp);
     #ifdef SYS_OPENAT
-        printk("%s: sys_openat hook invoked %lu times\n",MODNAME, audit_counter);
+        printk("%s: sys_openat hook invoked %lu times\n",MODNAME, open_audit_counter);
     #else
         printk("%s: do_filp_open hook invoked %lu times\n",MODNAME, audit_counter);
     #endif
