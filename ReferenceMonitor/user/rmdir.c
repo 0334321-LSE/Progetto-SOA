@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 int main() {
-    const char *directory = "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/user/test";
+    const char *directory = "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/user/test/";
 
     // Eseguiamo l'operazione di rimozione della directory
     int result = rmdir(directory);

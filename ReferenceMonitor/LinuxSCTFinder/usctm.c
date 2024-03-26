@@ -177,30 +177,31 @@ asmlinkage long sys_state_update(char* state ,char* password){
 		
 		// Vector of states for cute printing
 		const char* states[] = {"OFF", "REC_OFF", "ON", "REC_ON"};
-		
+		char* kernel_password;
 		// Check monitor
 		if ( !monitor ){
 			printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
 			return-EINVAL; // Monitor doesn't exists
 		}
-
-		/*spin_lock(&monitor->lock);
-		printk("%s: LOCK \n",MODNAME);*/
-
+		
 		old_state = monitor->state;
 
-		// Check password length to avoid some kind of overflow vulnerabilities
-		if (strlen(password)>PASW_MAX_LENGTH){
-			printk("%s: Password is to big.\n",MODNAME);
-			return -EINVAL;  // To big password 
+		// kmalloc password into kernel space, PASW_MAX_LENGTH is the maximium size of the password in the kernel.
+		kernel_password = kmalloc(PASW_MAX_LENGTH, GFP_KERNEL);
+		if (!kernel_password)
+			return -ENOMEM; 
+			
+		// Copy from user space the password.
+		if (copy_from_user(kernel_password, password, PASW_MAX_LENGTH)) {
+			kfree(kernel_password);
+			return -EFAULT;
 		}
 
 		// Check password
-		if (strncmp(password, monitor->password, strlen(monitor->password)) != 0) {
+		if (strncmp(kernel_password, monitor->password, strlen(monitor->password)) != 0) {
 			printk("%s: Password isn't valid.\n",MODNAME);
 			return -EINVAL;  // Not valid password 
-		}
-
+	}
 		// Update monitor state
 		if (strncmp(state, "ON",strlen("ON")) == 0) {
 			monitor->state = ON;
@@ -237,7 +238,7 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 	
 	// Vector of states for cute printing
 	const char* states[] = {"OFF", "REC_OFF", "ON", "REC_ON"};
-
+	char *kernel_password;
 	char *kernel_path;
 	struct protected_path *entry, *tmp;
 
@@ -253,14 +254,19 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 		return -EPERM; // State is wrong
 	}
 
-	// Check password length to avoid some kind of overflow vulnerabilities
-	if (strlen(password)>PASW_MAX_LENGTH){
-		printk("%s: Password is to big.\n",MODNAME);
-		return -EINVAL;  // To big password 
+	// kmalloc password into kernel space, PASW_MAX_LENGTH is the maximium size of the password in the kernel.
+	kernel_password = kmalloc(PASW_MAX_LENGTH, GFP_KERNEL);
+	if (!kernel_password)
+		return -ENOMEM; 
+
+	// Copy from user space the password.
+	if (copy_from_user(kernel_password, password, PASW_MAX_LENGTH)) {
+		kfree(kernel_password);
+		return -EFAULT;
 	}
 
 	// Check password
-	if (strncmp(password, monitor->password, strlen(monitor->password)) != 0) {
+	if (strncmp(kernel_password, monitor->password, strlen(monitor->password)) != 0) {
 		printk("%s: Password isn't valid.\n",MODNAME);
 		return -EINVAL;  // Not valid password 
 	}
@@ -360,7 +366,55 @@ static unsigned long sys_configure_path = (unsigned long) __x64_sys_configure_pa
 #else
 #endif
 
+// THIRD SYSCALL
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+__SYSCALL_DEFINEx(1, _print_paths,  char*, password){
+#else
+asmlinkage long sys_print_paths(char* password){
+#endif
+	char * kernel_password;
+	struct protected_path *entry;
+	int i;
+	// Check monitor
+	if ( !monitor ){
+		printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
+		return-EINVAL; // Monitor doesn't exists
+	}
 
+	// kmalloc password into kernel space, PASW_MAX_LENGTH is the maximium size of the password in the kernel.
+	kernel_password = kmalloc(PASW_MAX_LENGTH, GFP_KERNEL);
+	if (!kernel_password)
+		return -ENOMEM; 
+		
+	// Copy from user space the password.
+	if (copy_from_user(kernel_password, password, PASW_MAX_LENGTH)) {
+		kfree(kernel_password);
+		return -EFAULT;
+	}
+
+	// Check password
+	if (strncmp(kernel_password, monitor->password, strlen(monitor->password)) != 0) {
+		printk("%s: Password isn't valid.\n",MODNAME);
+		return -EINVAL;  // Not valid password 
+	}	
+
+	spin_lock(&monitor->lock);
+	i=1;
+	// Print all the entry
+	list_for_each_entry(entry, &monitor->protected_paths, list) {
+
+		printk("%s: Protected path-%d  %s \n",MODNAME, i,entry->path_name);
+		i++;
+	}
+	spin_unlock(&monitor->lock);
+
+	return 0;
+
+} 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+static unsigned long sys_print_paths = (unsigned long) __x64_sys_print_paths;	
+#else
+#endif
 unsigned long cr0;
 
 static inline void
@@ -420,9 +474,13 @@ int init_module(void) {
 	unprotect_memory();
 	hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_state_update;
 	hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_configure_path;
+	hacked_syscall_tbl[THIRD_NI_SYSCALL] = (unsigned long*)sys_print_paths;
+
 	protect_memory();
 	printk("%s: Added state_update on the sys_call_table at displacement %d\n",MODNAME,FIRST_NI_SYSCALL);
 	printk("%s: Added configure_path on the sys_call_table at displacement %d\n",MODNAME,SECOND_NI_SYSCALL);	
+	printk("%s: Added print_paths on the sys_call_table at displacement %d\n",MODNAME,THIRD_NI_SYSCALL);	
+
 	printk("%s: module correctly mounted\n",MODNAME);
 #else
 #endif
@@ -438,6 +496,8 @@ void cleanup_module(void) {
 	unprotect_memory();
 	hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
 	hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+	hacked_syscall_tbl[THIRD_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+
 	protect_memory();
 #else
 #endif

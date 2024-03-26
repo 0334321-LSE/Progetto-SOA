@@ -1,15 +1,10 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
+- Aggiungi kprobe su creat.
 
-- Aggiungi probe sull'unlink OK
-
-- Aggiungi probe su rmdir.
-
-- Rimuovi il bug sulle dipendenze del modulo.
+- Fai in modo che le operazioni priam di esser eseguite controllino che il padre non sia una directory protetta.
 
 - Rimuovi il bug di "execution atomic".
-
-- Aggiungi una system call per stampare i path protetti.
 
 - Implementa la scrittura sul log dei file/directory protetti (in defered work)
 
