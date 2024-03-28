@@ -306,7 +306,6 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 			kfree(kernel_path);
 			kfree(entry);
             return -ENOMEM;
-
 		}
 
 		entry->inode_number = get_inode_from_path(kernel_path);

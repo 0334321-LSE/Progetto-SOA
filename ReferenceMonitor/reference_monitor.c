@@ -26,9 +26,7 @@
 inline int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
     ino_t inode_number;
-    // Acquisisci la spinlock per accedere alla lista dei percorsi protetti
-    //spin_lock(&monitor->lock);
-
+   
     inode_number = get_inode_from_path(filename);
     if (inode_number == 0)
         //not valid path
@@ -36,17 +34,10 @@ inline int file_in_protected_paths(const char* filename){
 
     // Iterate on the list, *_safe is not required is needed only for removes
     list_for_each_entry(entry, &monitor->protected_paths, list){
-        // strncmp more secure in respect of strcmp, prevents buffer overflow
         if (entry->inode_number == inode_number) {
-            // Il percorso è presente nella lista dei percorsi protetti
-            //spin_unlock(&monitor->lock);
-
             return 1;       
         }
     }
-
-    // Rilascia la spinlock
-    //spin_unlock(&monitor->lock);
 
     // Il percorso non è presente nella lista dei percorsi protetti
     return 0;
@@ -57,11 +48,25 @@ inline ino_t get_inode_from_path(const char* percorso){
     struct path path;
     struct dentry *dentry;
     ino_t inode_number;
+    int ret;
+    char * pathname;
 
     // Ottieni il percorso del file
-    if (kern_path(percorso, LOOKUP_FOLLOW, &path)) {
-        // Gestione dell'errore
-        return 0; // Inode invalido
+    pathname = kstrdup(percorso, GFP_KERNEL);
+    if (!pathname) {
+        printk(KERN_ERR "Failed to allocate memory for destination string\n");
+        kfree(pathname);
+        return 0;
+    }
+
+    ret = kern_path(pathname, LOOKUP_FOLLOW, &path); 
+    if (ret == -ENOENT) {
+        ret = kern_path(strcat(pathname, "~"), LOOKUP_FOLLOW, &path);
+        if (ret){
+            printk("Can't find absolute path");
+            kfree(pathname);
+            return 0;
+        }    
     }
 
     dentry = path.dentry;
@@ -70,7 +75,7 @@ inline ino_t get_inode_from_path(const char* percorso){
     inode_number = dentry->d_inode->i_ino;
 
     path_put(&path);
-
+    kfree(pathname);
     return inode_number;
 }
 

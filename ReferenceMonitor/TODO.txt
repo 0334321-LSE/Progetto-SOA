@@ -1,10 +1,8 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Aggiungi kprobe su creat.
+- Fai dei make file più decenti
 
-- Fai in modo che le operazioni priam di esser eseguite controllino che il padre non sia una directory protetta.
-
-- Rimuovi il bug di "execution atomic".
+- Quando aggiungi una directory nel RM aggiunti tutto il suo contenuto (per le sottodirectory lo stesso)
 
 - Implementa la scrittura sul log dei file/directory protetti (in defered work)
 
