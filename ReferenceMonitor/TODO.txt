@@ -1,15 +1,15 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Fai dei make file più decenti
+- Aggiung probe su vfs_create e vfs_remove per gestire aggiunte e rimozioni su directory
 
-- Quando aggiungi una directory nel RM aggiunti tutto il suo contenuto (per le sottodirectory lo stesso)
+- Gestisci la creazione di file all'interno di directory blacklistate
 
 - Implementa la scrittura sul log dei file/directory protetti (in defered work)
-
-- Aggiung probe su vfs_create e vfs_remove per gestire aggiunte e rimozioni su directory
 
 - Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
 
 - Fai un interfaccia user con cui interagire col monitor. Attento all'inserimento di spazi nei path.
+
+- Fai dei make file più decenti
 
 - Chiedi a cobero quando è necesaario fare copyfrom user e quando esser direttamente usati.

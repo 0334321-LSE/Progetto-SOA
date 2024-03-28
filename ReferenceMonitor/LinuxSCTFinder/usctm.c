@@ -35,6 +35,7 @@
 #include <linux/interrupt.h>
 #include <linux/time.h>
 #include <linux/string.h>
+#include <linux/namei.h>
 #include <linux/vmalloc.h>
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -76,7 +77,6 @@ module_param(sys_call_table_address, ulong, 0660);
 
 unsigned long sys_ni_syscall_address = 0x0;
 module_param(sys_ni_syscall_address, ulong, 0660);
-
 
 int good_area(unsigned long * addr){
 
@@ -292,39 +292,13 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 			return -EINVAL;
 		}
 
-		// kmalloc one protected path
-		entry = kmalloc(sizeof(struct protected_path), GFP_KERNEL);
-		if (!entry) {
-			printk("%s: Entry can't be allocated \n",MODNAME);
-			kfree(kernel_path);
-            return -ENOMEM; 
-		}
-
-		entry->path_name = kernel_path;
-		if (!entry->path_name){
-			printk("%s: Entry pathname can't be allocated \n",MODNAME);
-			kfree(kernel_path);
-			kfree(entry);
-            return -ENOMEM;
-		}
-
-		entry->inode_number = get_inode_from_path(kernel_path);
-		if (entry->inode_number == 0){
-			printk("%s: Entry inode number can't be found \n",MODNAME);
-			kfree(kernel_path);
-			kfree(entry);
-            return -ENOENT; 
-		}
-
-		// Acquire lock to work with the list
-		spin_lock(&monitor->lock);
-
-		list_add(&entry->list, &monitor->protected_paths);
-
-		spin_unlock(&monitor->lock);
-
-		printk("%s: Path %s with inode: %ld added successfully by %d\n",MODNAME, kernel_path, entry->inode_number ,current->pid);
-
+		if(is_directory(kernel_path))
+			//will iterate over the directory and its subdir:
+			add_dir(MODNAME,kernel_path);
+			
+		else
+			add_file(MODNAME,kernel_path);
+		
 		break;
 		
 	case 1 /* REMOVE*/:

@@ -2,9 +2,10 @@
 This is a reference monitor implementation, developed by using Linux kernel modules. <br />
 
 ## Black listed path
-
+### Adding Path
+When a path is added, if it is a file, it is simply added to the blacklist. However, if it is a directory, all the files and subdirectories within it will be blacklisted as well
 ### Hard Link
-Since files and directories are stored in the monitor with their inode numbers, hard links do not pose a problem because they share the same inode number. Therefore, it is possible to create hard links to protected files (which is not possible by default for directories), but these hard links do not influence the original file in any way.
+Since files and directories are stored in the monitor with their inode numbers, hard links do not pose a problem because they share the same inode number of the original file. Therefore, it is possible to create hard links to protected files (which is not possible by default for directories), but these hard links do not influence the original file in any way.
 ### Soft Link
 When access to the original file of a symbolic link is blocked, it effectively prevents access to all the symlinks pointing to that file. Since symlinks are merely pointers to the original file, if access to the original file is blocked, following the symlink to access the file content becomes impossible. Consequently, any attempt to access via a blocked symlink will be disrupted.
 
