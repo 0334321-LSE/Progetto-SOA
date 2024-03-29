@@ -49,6 +49,7 @@ inline ino_t get_inode_from_path(const char* path);
 inline int inode_in_protected_paths(long unsigned int inode_number);
 inline int add_file(char* modname, const char* path);
 inline int add_dir(char* modname, const char* path);
-int is_directory(const char *path);
+inline int is_directory(const char *path);
+inline int parent_is_blacklisted(const struct dentry* dentry);
 
 #endif /* REFERENCE_MONITOR_H */

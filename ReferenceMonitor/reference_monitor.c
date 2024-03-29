@@ -26,7 +26,7 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
 } */
 
 
-int is_directory(const char *path) {
+inline int is_directory(const char *path) {
     struct path p;
     int ret = 0;
 
@@ -261,3 +261,20 @@ inline int inode_in_protected_paths(long unsigned int inode_number){
     return 0;
 }
 
+inline int parent_is_blacklisted(const struct dentry* dentry){
+    struct dentry * parent_dentry = dentry->d_parent;
+    printk("Parent path of %s ino %ld is : %s ",dentry->d_name.name,dentry->d_inode->i_ino, parent_dentry->d_name.name);
+    if (parent_dentry) {
+        struct inode *parent_inode = parent_dentry->d_inode;;
+        printk("Parent inode: %ld ",parent_inode->i_ino);
+
+        if (inode_in_protected_paths(parent_inode->i_ino)) {
+            return 1;
+        } 
+        dput(parent_dentry);
+        return 0;
+    }else{
+      printk("Can't find node parent");
+      return 0; 
+    }
+}

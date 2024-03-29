@@ -20,6 +20,8 @@ The user level system call **sys_rmdir** relies on other low level API. Also her
 The user level system call **sys_rename** and **sys_renameat** relies on other low level API. Also here there is an API that check permission, for documentation: "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1904"
 ### Mkdir
 The user level system call **sys_mkdir** and **sys_mkdirat** relies on other low level API. Also here there is an API that check permission, for documentation: "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1814"
+### Creation
+Also file creation is monitored by intercepting **security_inode_create** "https://elixir.bootlin.com/linux/latest/source/security/security.c#L1994". When there is an attempt to create file inside a blacklisted dir it will be blocked.
 ### Symlink (Not Mandatory)
 The user level system call **sys_symlink** and **sys_symlinkat** relies on other low level API. Also here there is an API that check permission, for documentation: "https://elixir.bootlin.com/linux/latest/source/security/security.c#L1866". This API can be blocked to rise the security level.
 

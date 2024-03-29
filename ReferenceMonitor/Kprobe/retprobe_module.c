@@ -35,6 +35,8 @@ PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the s
 
 #define mkdir_func "security_path_mkdir"
 
+#define create_func "security_inode_create"
+
 //#define SYMLINK
 
 #ifdef SYMLINK
@@ -46,6 +48,8 @@ static unsigned long unlink_audit_counter = 0;//just to audit how many times unl
 static unsigned long rmdir_audit_counter = 0;//just to audit how many times rmdir_krobe has been called
 static unsigned long rename_audit_counter = 0;//just to audit how many times rename_krobe has been called
 static unsigned long mkdir_audit_counter = 0;//just to audit how many times mkdir_krobe has been called
+static unsigned long create_audit_counter = 0;//just to audit how many times mkdir_krobe has been called
+
 #ifdef SYMLINK
 static unsigned long symlink_audit_counter = 0;//just to audit how many times symlink_krobe has been called
 #endif
@@ -340,6 +344,46 @@ static int mkdir_post_handler(struct kretprobe_instance *p, struct pt_regs *the_
 
 //----------------------------
 
+
+// CREATE HANDLERS
+static int create_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+   
+    struct inode *target; 
+    struct dentry * dentry;
+    struct dentry * parent_dentry;
+
+    // Check if the module is OFF or REC-OFF, in that case doesn't need to execute the post handler
+     if(monitor->state == 0 || monitor->state == 1)
+        goto end;
+        
+    // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
+    /* int security_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode) */
+
+    // path is the parent directory (the one to check) is the first parameter
+    target = (struct inode *) the_regs->di;
+    dentry = (struct dentry *) the_regs->si;
+    parent_dentry = dentry->d_parent;
+
+    if(inode_in_protected_paths(target->i_ino)){
+        // ADD TO LOG
+        atomic_inc((atomic_t*)&create_audit_counter);
+        printk("%s: Create on %s of %s blocked correctly \n", MODNAME,parent_dentry->d_name.name, dentry->d_name.name);
+        return 0;
+    }
+
+end:
+    return 1;
+}
+
+static int create_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    the_regs->ax = -1;
+    printk("%s: create blocked\n", MODNAME);
+
+    return 0;
+}
+
+//----------------------------
+
 #ifdef SYMLINK
 // SYMLINK HANDLERS
 static int symlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
@@ -414,6 +458,13 @@ static struct kretprobe mkdir_retprobe = {
     .maxactive = -1 // Numero massimo di kretprobes attive, -1 per il valore predefinito
 };
 
+static struct kretprobe create_retprobe = {
+    .kp.symbol_name = create_func, // Nome della funzione da intercettare
+    .handler = create_post_handler, // Gestore dell'uscita della kretprobe
+    .entry_handler = create_pre_handler, // Gestore dell'entrata della kretprobe
+    .maxactive = -1 // Numero massimo di kretprobes attive, -1 per il valore predefinito
+};
+
 #ifdef SYMLINK
 static struct kretprobe symlink_retprobe = {
     .kp.symbol_name = symlink_func, // Nome della funzione da intercettare
@@ -444,6 +495,10 @@ static int hook_init(void) {
     // MKDIR
     if ( register_hook(&mkdir_retprobe, mkdir_func) < 0)
         return -1;
+
+    // CREATE
+    if ( register_hook(&create_retprobe, create_func) < 0)
+        return -1;
     
     #ifdef SYMLINK
     // SYMLINK
@@ -462,6 +517,8 @@ static void  hook_exit(void) {
 	unregister_kretprobe(&rmdir_retprobe);
     unregister_kretprobe(&rename_retprobe);
     unregister_kretprobe(&mkdir_retprobe);
+    unregister_kretprobe(&create_retprobe);
+
     #ifdef SYMLINK
         unregister_kretprobe(&symlink_retprobe);
     #endif
@@ -473,6 +530,8 @@ static void  hook_exit(void) {
     printk("%s: %s hook invoked %lu times\n",MODNAME, rmdir_func ,rmdir_audit_counter);
     printk("%s: %s hook invoked %lu times\n",MODNAME, rename_func ,rename_audit_counter);
     printk("%s: %s hook invoked %lu times\n",MODNAME, mkdir_func ,mkdir_audit_counter);
+    printk("%s: %s hook invoked %lu times\n",MODNAME, mkdir_func ,create_audit_counter);
+
     #ifdef SYMLINK
         printk("%s: %s hook invoked %lu times\n",MODNAME, symlink_func ,symlink_audit_counter);
     #endif
