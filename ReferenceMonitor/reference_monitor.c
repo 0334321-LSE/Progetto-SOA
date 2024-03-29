@@ -1,7 +1,10 @@
 #include "reference_monitor.h"
 
+#if  LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
 static bool add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
-
+#else
+static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
+#endif
 /* inline int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
     // Acquisisci la spinlock per accedere alla lista dei percorsi protetti
@@ -115,6 +118,7 @@ inline int add_dir(char* modname, const char* path){
     return 0;
 }
 
+#if  LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
 static bool add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type) {
 	char *full_path;
     char *file_name;
@@ -187,6 +191,102 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
     kfree (file_name);
     kfree(full_path);
     return true;
+}
+
+inline int file_in_protected_paths(const char* filename){
+    struct protected_path *entry;
+    ino_t inode_number;
+   
+    inode_number = get_inode_from_path(filename);
+    if (inode_number == 0)
+        //not valid path
+        return 0;
+
+    // Iterate on the list, *_safe is not required is needed only for removes
+    list_for_each_entry(entry, &monitor->protected_paths, list){
+        if (entry->inode_number == inode_number) {
+            return 1;       
+        }
+    }
+
+    // Il percorso non è presente nella lista dei percorsi protetti
+    return 0;
+}
+
+#else
+static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type) {
+#endif
+	char *full_path;
+    char *file_name;
+    char last_char;
+	// retrieve base dir path from struct custom_dir_context 
+	struct my_dir_context *my_ctx = container_of(ctx, struct my_dir_context, dir_ctx);
+
+    char *modname = kstrdup(my_ctx->modname, GFP_KERNEL);
+    if (!modname) {
+        printk(KERN_ERR "Failed to allocate memory for destination string\n");
+        kfree(modname);
+        return 0;
+    }
+
+	// Build full path by using parent directory path passed to iterate_dir and current filename:
+    // 1 Copy the path of parent dir
+        full_path = kmalloc(strlen(my_ctx->dir_path)+1, GFP_KERNEL);
+        if (!full_path){
+            printk("%s: Can't alloc memory for full path \n",modname);
+            return -ENOMEM;
+        }
+        strcpy(full_path, my_ctx->dir_path);
+        
+    // 2 Add the file/directory name to this path
+        file_name = kmalloc(strlen(name)+1, GFP_KERNEL);
+        if (!file_name) {
+                printk("%s: kmalloc allocation error (process_dir_entry)\n", modname);
+                kfree(full_path);
+                return 0;
+        }
+
+        strncpy(file_name, name, strlen(name));
+        file_name[strlen(name)] = '\0'; 
+        //printk("%s: Adding filename: %s \n",modname,file_name);
+
+
+	/* exclude current and parent directories */
+    if (strcmp(file_name, ".") && strcmp(file_name, "..")) {
+        /* reconstruct file/subdirectory path 
+        last_char = (full_path[strlen(full_path-1)]);
+        printk("%s: Last char: %c",modname,last_char);
+        // add the "/"" to the end if the parent dir path doesn't include it
+        if( last_char != '/')*/
+        strcat(full_path, "/");
+
+        // then add the dir/file name
+        strcat(full_path, file_name);
+
+        //printk("%s: Adding full path: %s \n",modname,full_path);
+        if (d_type == DT_DIR) {         /* subdirectory */
+    
+            struct file *subdir = filp_open(full_path, O_RDONLY, 0);
+            
+            if (IS_ERR(subdir)) {
+                    printk("%s: error during file opening %s\n", modname, full_path);
+                    kfree (full_path);
+                    kfree (file_name);
+                    return PTR_ERR(subdir);
+            }
+
+            add_dir(modname, full_path);
+                    
+        } else {        /* file */
+
+            add_file(modname, full_path);
+
+        }
+    }
+
+    kfree (file_name);
+    kfree(full_path);
+    return 0;
 }
 
 inline int file_in_protected_paths(const char* filename){

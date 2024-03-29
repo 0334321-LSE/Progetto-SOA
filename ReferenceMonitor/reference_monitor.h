@@ -5,6 +5,7 @@
 #include <linux/spinlock.h>  
 #include <linux/slab.h> 
 #include <linux/string.h>
+#include <linux/version.h>
 #include <linux/fs.h>
 #include <linux/stat.h>
 #include <linux/vfs.h>
