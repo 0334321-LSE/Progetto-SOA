@@ -20,8 +20,8 @@
 #define MODNAME "RPROB-MOD"
 
 MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
-MODULE_DESCRIPTION("This module install kretprobe do_filp_open \
-and check if black-listed path is opened in write mode. \
+MODULE_DESCRIPTION("The module install kretprobe on different functions (see below) \
+and check if black-listed path are touched by this function, in that case: block the access and report informatio to a log file. \
 PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the specific system call calling convention of this architectures.");
 
 #define open_func "vfs_open"
@@ -84,7 +84,7 @@ int register_hook(struct kretprobe *the_probe, char * the_func){
 /* VFSOPEN HANDLERS */
 static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     // vfsopen pre handler
-
+    struct log_entry log_entry;
     struct path* path;
     struct dentry* dentry;
     struct inode * inode;
@@ -116,6 +116,8 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC){
         // Check if file is protected
         if (inode_in_protected_paths(inode->i_ino)){
+            write_log_entry(&log_entry,"OPN");
+
             // ADD WRITE-REPORT ON LOG FILE
             printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);
             atomic_inc((atomic_t*)&open_audit_counter);

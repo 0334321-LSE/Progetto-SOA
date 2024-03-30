@@ -5,6 +5,9 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
 #else
 static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
 #endif
+
+static int calculate_sha256(const char *input, size_t input_len, char *output);
+
 /* inline int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
     // Acquisisci la spinlock per accedere alla lista dei percorsi protetti
@@ -29,7 +32,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
 } */
 
 
-inline int is_directory(const char *path) {
+int is_directory(const char *path) {
     struct path p;
     int ret = 0;
 
@@ -45,7 +48,7 @@ inline int is_directory(const char *path) {
     return ret; // No, non è una directory
 }
 
-inline int add_file(char* modname, const char* path){
+int add_file(char* modname, const char* path){
     struct protected_path *entry;
 
  		// kmalloc one protected path
@@ -83,7 +86,7 @@ inline int add_file(char* modname, const char* path){
     return 0;
 }
 
-inline int add_dir(char* modname, const char* path){
+int add_dir(char* modname, const char* path){
 
     struct file *dir;
     struct my_dir_context context;
@@ -289,7 +292,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
     return 0;
 }
 
-inline int file_in_protected_paths(const char* filename){
+int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
     ino_t inode_number;
    
@@ -311,7 +314,7 @@ inline int file_in_protected_paths(const char* filename){
 
 
 
-inline ino_t get_inode_from_path(const char* percorso){
+ino_t get_inode_from_path(const char* percorso){
     struct path path;
     struct dentry *dentry;
     ino_t inode_number;
@@ -346,7 +349,7 @@ inline ino_t get_inode_from_path(const char* percorso){
     return inode_number;
 }
 
-inline int inode_in_protected_paths(long unsigned int inode_number){
+int inode_in_protected_paths(long unsigned int inode_number){
     struct protected_path *entry; 
     // Iterate on the list, *_safe is not required is needed only for removes
     list_for_each_entry(entry, &monitor->protected_paths, list){
@@ -361,7 +364,7 @@ inline int inode_in_protected_paths(long unsigned int inode_number){
     return 0;
 }
 
-inline int parent_is_blacklisted(const struct dentry* dentry){
+int parent_is_blacklisted(const struct dentry* dentry){
     struct dentry * parent_dentry = dentry->d_parent;
     printk("Parent path of %s ino %ld is : %s ",dentry->d_name.name,dentry->d_inode->i_ino, parent_dentry->d_name.name);
     if (parent_dentry) {
@@ -377,4 +380,216 @@ inline int parent_is_blacklisted(const struct dentry* dentry){
       printk("Can't find node parent");
       return 0; 
     }
+}
+
+int get_log_info(struct log_entry * entry, char* cmd){
+    
+    struct mm_struct *mm = current->mm;
+    char * hash;
+    strncpy(entry->cmd, cmd, CMD_SIZE); // Executed CMD
+    entry->process_tgid = current->tgid; //process TGID
+    entry->thread_id = current->pid; //thread ID
+    entry->user_id = current_uid().val; // user-id
+    entry->effective_user_id = current_euid().val; //effective user-id
+    hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_KERNEL);
+    if (mm && mm->exe_file) {
+            struct dentry *exe_dentry = mm->exe_file->f_path.dentry;
+            if (strncpy(entry->program_path,exe_dentry->d_name.name, PATH_MAX) == NULL ){
+                printk("Cant' find exe path\n");
+                return -1;
+            }
+
+        } else {
+            printk("Cant' find exe path\n");
+            return -1;
+    }
+
+    if (! calculate_sha256(entry->program_path, strlen(entry->program_path), hash))
+        strncpy(entry->file_content_hash,hash,HASH_SIZE);
+    else{
+        printk("Cant' evaluate hash\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+// Function to calculate the SHA-256 hash of a string
+// Parameters:
+// - input: Pointer to the input data
+// - input_len: Length of the input data
+// - output: Pointer to the buffer where the hash will be stored (must be at least 65 bytes long)
+// Returns:
+// - 0 if the hash calculation is successful
+// - Error code (< 0) if the hash calculation fails
+static int calculate_sha256(const char *input, size_t input_len, char *output) {
+    struct crypto_shash *tfm;
+    struct shash_desc *desc;
+    char *hash;
+    int ret = 0;
+    int i;
+
+    // Allocate memory for the hash buffer
+    hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_KERNEL);
+    if (!hash) {
+        printk(KERN_ERR "Failed to allocate hash buffer\n");
+        return -ENOMEM;
+    }
+
+    // Allocate memory for the transformation object
+    tfm = crypto_alloc_shash("sha256", 0, 0);
+    if (IS_ERR(tfm)) {
+        printk(KERN_ERR "Failed to allocate crypto shash\n");
+        ret = PTR_ERR(tfm);
+        goto free_hash;
+    }
+
+    // Allocate memory for the hash descriptor
+    desc = kmalloc(sizeof(struct shash_desc) + crypto_shash_descsize(tfm), GFP_KERNEL);
+    if (!desc) {
+        printk(KERN_ERR "Failed to allocate shash descriptor\n");
+        ret = -ENOMEM;
+        goto free_tfm;
+    }
+
+    desc->tfm = tfm;
+
+    // Initialize the hash descriptor
+    ret = crypto_shash_init(desc);
+    if (ret) {
+        printk(KERN_ERR "Failed to initialize crypto shash\n");
+        goto free_desc;
+    }
+
+    // Add the data to be hashed
+    ret = crypto_shash_update(desc, input, input_len);
+    if (ret) {
+        printk(KERN_ERR "Failed to update crypto shash\n");
+        goto free_desc;
+    }
+
+    // Finalize the hash calculation
+    ret = crypto_shash_final(desc, hash);
+    if (ret) {
+        printk(KERN_ERR "Failed to finalize crypto shash\n");
+        goto free_desc;
+    }
+
+    // Copy the hash to the output buffer in hexadecimal format
+    for (i = 0; i < crypto_shash_digestsize(tfm); i++) {
+        snprintf(output + (i * 2), 3, "%02x", hash[i]);
+    }
+
+free_desc:
+    kfree(desc);
+free_tfm:
+    crypto_free_shash(tfm);
+free_hash:
+    kfree(hash);
+
+    return ret;
+}
+
+
+// Function to write log entry to file
+int write_log_entry(struct log_entry *entry, char* cmd) {
+    struct file *log_file;
+    int ret = 0;
+
+    if (get_log_info(entry, cmd)){
+        printk(KERN_ERR "Failed to get log info\n");
+        return -1;
+    }
+
+    // Open the log file in append mode
+    log_file = filp_open(LOG_PATH, O_WRONLY | O_APPEND, 0644);
+    if (IS_ERR(log_file)) {
+        int err = PTR_ERR(log_file);
+        printk(KERN_ERR "Failed to open log file: %d\n", err);
+        return err;
+    }
+
+    // Write process TGID
+    
+    ret = vfs_write(log_file, (char *)&entry->process_tgid, sizeof(pid_t), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write process TGID to log file: %d, the entry was: %s\n", ret, (char *)&entry->process_tgid);
+        goto close_file;
+    }
+
+    // Write separator
+    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write separator to log file\n");
+        goto close_file;
+    }
+
+    // Write thread ID
+    ret = vfs_write(log_file, (char *)&entry->thread_id, sizeof(pid_t), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write thread ID to log file\n");
+        goto close_file;
+    }
+
+    // Write separator
+    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write separator to log file\n");
+        goto close_file;
+    }
+
+    // Write user ID
+    ret = vfs_write(log_file, (char *)&entry->user_id, sizeof(uid_t), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write user ID to log file\n");
+        goto close_file;
+    }
+
+    // Write separator
+    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write separator to log file\n");
+        goto close_file;
+    }
+
+    // Write effective user ID
+    ret = vfs_write(log_file, (char *)&entry->effective_user_id, sizeof(uid_t), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write effective user ID to log file\n");
+        goto close_file;
+    }
+
+    // Write separator
+    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write separator to log file\n");
+        goto close_file;
+    }
+
+    // Write program path
+    ret = vfs_write(log_file, entry->program_path, strlen(entry->program_path), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write program path to log file\n");
+        goto close_file;
+    }
+
+    // Write separator
+    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write separator to log file\n");
+        goto close_file;
+    }
+
+    // Write file content hash
+    ret = vfs_write(log_file, entry->file_content_hash, strlen(entry->file_content_hash), &log_file->f_pos);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to write file content hash to log file\n");
+        goto close_file;
+    }
+
+close_file:
+    // Close the log file
+    filp_close(log_file, NULL);
+
+    return ret;
 }

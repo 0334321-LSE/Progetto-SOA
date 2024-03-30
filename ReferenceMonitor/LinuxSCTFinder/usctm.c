@@ -46,8 +46,9 @@
 
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Francesco Quaglia <framcesco.quaglia@uniroma2.it>");
-MODULE_DESCRIPTION("USCTM");
+MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
+MODULE_DESCRIPTION("Find the system call table and add system calls to work with reference monitor. \
+The original module is written by Francesco Quaglia <francesco.quaglia@uniroma2.it>");
 
 
 

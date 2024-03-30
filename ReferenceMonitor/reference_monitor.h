@@ -11,12 +11,16 @@
 #include <linux/vfs.h>
 #include <linux/path.h>
 #include <linux/namei.h>
-
+#include <linux/crypto.h>
+#include <crypto/hash.h>
+#include <linux/sched.h>
 
 // MAX PASW SIZE
 #define PASW_MAX_LENGTH 64
+#define HASH_SIZE 65
 #define STATE_MAX_LENGTH 16
-
+#define CMD_SIZE 5
+#define LOG_PATH "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/singlefile-FS/mount/the-log"
 extern struct reference_monitor* monitor;
 
 enum State {
@@ -45,12 +49,23 @@ struct my_dir_context{
     char *modname;
 };
 
-inline int file_in_protected_paths(const char* filename);
-inline ino_t get_inode_from_path(const char* path);
-inline int inode_in_protected_paths(long unsigned int inode_number);
-inline int add_file(char* modname, const char* path);
-inline int add_dir(char* modname, const char* path);
-inline int is_directory(const char *path);
-inline int parent_is_blacklisted(const struct dentry* dentry);
+struct log_entry {
+    char  cmd[CMD_SIZE]; // Command
+    pid_t process_tgid;  // Process TGID
+    pid_t thread_id;     // Thread ID
+    uid_t user_id;       // User ID
+    uid_t effective_user_id;  // Effective User ID
+    char program_path[PATH_MAX];   // Program Path Name
+    char file_content_hash[HASH_SIZE]; // Cryptographic Hash of Program File Content (SHA-256)
+};
 
+int file_in_protected_paths(const char* filename);
+ino_t get_inode_from_path(const char* path);
+int inode_in_protected_paths(long unsigned int inode_number);
+int add_file(char* modname, const char* path);
+int add_dir(char* modname, const char* path);
+int is_directory(const char *path);
+int parent_is_blacklisted(const struct dentry* dentry);
+int get_log_info(struct log_entry * entry, char* cmd);
+int write_log_entry(struct log_entry *entry, char* cmd);
 #endif /* REFERENCE_MONITOR_H */

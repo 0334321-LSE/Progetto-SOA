@@ -1,9 +1,8 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Aggiung probe su vfs_create e vfs_remove per gestire aggiunte e rimozioni su directory
+- Controlla che cosa succede se si sfora la size di byte disponibili nel file.
 
-- Gestisci la creazione di file all'interno di directory blacklistate
-
+- Controlla perché la scrittura sul log non funziona.
 - Implementa la scrittura sul log dei file/directory protetti (in defered work)
 
 - Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
@@ -12,4 +11,4 @@
 
 - Fai dei make file più decenti
 
-- Chiedi a cobero quando è necesaario fare copyfrom user e quando esser direttamente usati.
+- Controlla che tutta la specifica sia rispettata
