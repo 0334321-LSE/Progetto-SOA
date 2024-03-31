@@ -25,5 +25,8 @@ Also file creation is monitored by intercepting **security_inode_create** "https
 ### Symlink (Not Mandatory)
 The user level system call **sys_symlink** and **sys_symlinkat** relies on other low level API. Also here there is an API that check permission, for documentation: "https://elixir.bootlin.com/linux/latest/source/security/security.c#L1866". This API can be blocked to rise the security level.
 
+## Log Data
+### Singlefs
+The log file is located into a custom file system that contains only one file (the log). The open,read and write operation are custom. In particular the write function allows only the append mode so the data are written at the end of the file. The file is composed by an header that shows the contents and each row represent an access attempt to black listed file/dir with specific information.
 ## Some Problems
 

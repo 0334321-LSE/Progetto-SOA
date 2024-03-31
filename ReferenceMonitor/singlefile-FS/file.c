@@ -8,6 +8,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/version.h>
+#include <linux/uaccess.h>
+#include <linux/uio.h>
 
 #include "singlefilefs.h"
 
@@ -57,7 +59,9 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
 
 }
 
-ssize_t onefilefs_write(struct file *filp, const char __user *buf, size_t len, loff_t *off) {
+// This isn't usefull beacause kernel_write uses write_iter, but initially I don't know this so i leave it her.
+// By checking kernel_write_iter documentation, kernel write doesn't work if exists "write" operation, must exists only write_iter
+/* ssize_t onefilefs_write(struct file *filp, const char __user *buf, size_t len, loff_t *off) {
     struct inode *the_inode = filp->f_inode;
     struct super_block *sb = the_inode->i_sb;
     struct buffer_head *bh;
@@ -67,12 +71,6 @@ ssize_t onefilefs_write(struct file *filp, const char __user *buf, size_t len, l
     ssize_t ret;
 
     printk("%s: write operation called with len %ld - and offset %lld (the current file size is %lld)\n", MOD_NAME, len, *off, file_size);
-
-    // Ensure append-only mode
-    if (!(filp->f_flags & O_APPEND)) {
-        printk(KERN_ERR "%s: Write operation is allowed in append-only mode\n", MOD_NAME);
-        return -EPERM; // Operation not permitted
-    }
 
     // Set the write offset to the end of the file
     *off = file_size;
@@ -108,11 +106,114 @@ ssize_t onefilefs_write(struct file *filp, const char __user *buf, size_t len, l
 
     return ret;
 }
+*/
+
+ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
+ // Access the file pointer and inode from the I/O control block
+struct file *file = iocb->ki_filp;
+struct inode *the_inode = file->f_inode;
+
+// Get the current offset within the file
+loff_t offset = file->f_pos;
+
+// Retrieve the current size of the file
+uint64_t file_size = i_size_read(the_inode);
+
+// Variables to track block offset, block number to write, and buffer head
+loff_t block_offset;
+int block_to_write;
+struct buffer_head *bh = NULL;
+
+// Variable to store remaining space in the current block
+size_t remaining_space_in_block;
+
+// Variable to store the number of bytes copied from the iterator
+size_t copied_bytes;
+
+/* byte size of the payload */
+size_t count = from->count;
+
+// Allocate memory for the data buffer
+char *data = kmalloc(count, GFP_KERNEL);
+if (!data) {
+    pr_err("%s: error in kmalloc allocation\n", MOD_NAME);
+    return -ENOMEM;
+}
+
+// Copy data from the iterator to the data buffer
+copied_bytes = _copy_from_iter((void *)data, count, from);
+if (copied_bytes != count) {
+    pr_err("%s: failed to copy %ld bytes from iov_iter\n", MOD_NAME, count);
+    kfree(data);
+    return -EFAULT;
+}
+
+// Update the file offset to the current size of the file
+offset = file_size;
+
+/* APPEND */
+// Calculate the block offset within the current block
+block_offset = offset % DEFAULT_BLOCK_SIZE;
+
+// Calculate the block number to write, accounting for superblock and inode
+block_to_write = offset / DEFAULT_BLOCK_SIZE + 2;
+
+// Calculate the remaining space in the current block
+remaining_space_in_block = DEFAULT_BLOCK_SIZE - block_offset;
+
+// Check if the remaining space in the current block is insufficient for the data
+if (remaining_space_in_block < count) {
+    // Allocate a new block
+    block_to_write++;
+    bh = sb_bread(the_inode->i_sb, block_to_write);
+    if (!bh) {
+        kfree(data);
+        return -EIO;
+    }
+    // Adjust the offset to the beginning of the new block
+    offset = block_to_write * DEFAULT_BLOCK_SIZE;
+    // Adjust the count to avoid writing beyond the block boundary
+    count = min_t(size_t, count, DEFAULT_BLOCK_SIZE);
+} else {
+    // Read the existing block to write data into
+    bh = sb_bread(the_inode->i_sb, block_to_write);
+    if (!bh) {
+        kfree(data);
+        return -EIO;
+    }
+}
+
+// Copy data into the block buffer at the appropriate offset
+memcpy(bh->b_data + block_offset, data, count);
+
+// Mark the buffer as dirty to indicate changes
+mark_buffer_dirty(bh);
+
+// Update the file size if necessary
+if (offset + count > file_size)
+    i_size_write(the_inode, offset + count);
+
+// Release the buffer head
+brelse(bh);
+
+// Update the file offset
+offset += count;
+
+// Free the memory allocated for the data buffer
+kfree(data);
+
+// Update the file position
+file->f_pos = offset;
+
+// Return the number of bytes written
+return count;
+
+}
 
 
 int onefilefs_open(struct inode *inode, struct file *file) {
     // Block open with O_CREAT or O_TRUNCT that can clean log content
-    if (file->f_flags & (O_CREAT | O_TRUNC)) {
+    if (file->f_flags & (O_CREAT | O_TRUNC | O_WRITE | O_RDWR)) {
         printk("%s: Open blocked \n", MOD_NAME);
         return -EPERM;
     }
@@ -192,5 +293,5 @@ const struct file_operations onefilefs_file_operations = {
     .owner = THIS_MODULE,
     .read = onefilefs_read,
     .open = onefilefs_open,
-    .write = onefilefs_write //please implement this function to complete the exercise
+    .write_iter = onefilefs_write_iter
 };

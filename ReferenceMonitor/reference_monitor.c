@@ -6,7 +6,12 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
 static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
 #endif
 
+static char *get_path_from_dentry(struct dentry *dentry);
 static int calculate_sha256(const char *input, size_t input_len, char *output);
+
+// Just for debugging
+static void print_log_entry(struct log_entry *entry);
+
 
 /* inline int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
@@ -382,19 +387,34 @@ int parent_is_blacklisted(const struct dentry* dentry){
     }
 }
 
+static char *get_path_from_dentry(struct dentry *dentry) {
+        char *full_path;
+        char *buffer = (char *)__get_free_page(GFP_KERNEL);
+        if (!buffer)
+                return NULL;
+
+        full_path = dentry_path_raw(dentry, buffer, PATH_MAX);
+        if (IS_ERR(full_path)) {
+                printk("Can't find full path: %li", PTR_ERR(full_path));
+        } 
+        free_page((unsigned long)buffer);
+
+        return full_path;
+}
+
 int get_log_info(struct log_entry * entry, char* cmd){
     
     struct mm_struct *mm = current->mm;
     char * hash;
     strncpy(entry->cmd, cmd, CMD_SIZE); // Executed CMD
-    entry->process_tgid = current->tgid; //process TGID
+    entry->process_tgid = task_tgid_vnr(current); //process TGID
     entry->thread_id = current->pid; //thread ID
     entry->user_id = current_uid().val; // user-id
     entry->effective_user_id = current_euid().val; //effective user-id
     hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_KERNEL);
     if (mm && mm->exe_file) {
             struct dentry *exe_dentry = mm->exe_file->f_path.dentry;
-            if (strncpy(entry->program_path,exe_dentry->d_name.name, PATH_MAX) == NULL ){
+            if (strncpy(entry->program_path,get_path_from_dentry(exe_dentry), PATH_MAX) == NULL ){
                 printk("Cant' find exe path\n");
                 return -1;
             }
@@ -494,102 +514,68 @@ free_hash:
 // Function to write log entry to file
 int write_log_entry(struct log_entry *entry, char* cmd) {
     struct file *log_file;
-    int ret = 0;
+    ssize_t ret = -1;
+    char log_data[256];
+
+    entry = kmalloc(sizeof(struct log_entry), GFP_KERNEL);
+    if (!entry) {
+        printk(KERN_ERR "Failed to allocate memory for log entry\n");
+        return -ENOMEM;
+    }    
 
     if (get_log_info(entry, cmd)){
         printk(KERN_ERR "Failed to get log info\n");
-        return -1;
+        ret = -EINVAL;
+        goto cleanup;
     }
 
+    // Just for debug
+    print_log_entry(entry);
+
     // Open the log file in append mode
-    log_file = filp_open(LOG_PATH, O_WRONLY | O_APPEND, 0644);
+    log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
     if (IS_ERR(log_file)) {
         int err = PTR_ERR(log_file);
         printk(KERN_ERR "Failed to open log file: %d\n", err);
-        return err;
+        ret = err;
+        goto cleanup;
     }
 
-    // Write process TGID
+    // Format file string
+    snprintf(log_data, sizeof(log_data), "|| %s || %d || %d || %u || %u || %s || %s \n",
+        entry->cmd, entry->thread_id, entry->process_tgid, entry->user_id,
+        entry->effective_user_id, entry->program_path, entry->file_content_hash);
     
-    ret = vfs_write(log_file, (char *)&entry->process_tgid, sizeof(pid_t), &log_file->f_pos);
+   
+    ret = kernel_write(log_file, log_data, strlen(log_data), &log_file->f_pos);
     if (ret < 0) {
-        printk(KERN_ERR "Failed to write process TGID to log file: %d, the entry was: %s\n", ret, (char *)&entry->process_tgid);
-        goto close_file;
+        printk(KERN_ERR "Failed to write on file %ld \n",ret);
     }
 
-    // Write separator
-    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write separator to log file\n");
-        goto close_file;
+cleanup:
+    // Close the log file if it was successfully opened
+    if (log_file && !IS_ERR(log_file)) {
+        filp_close(log_file, NULL);
     }
 
-    // Write thread ID
-    ret = vfs_write(log_file, (char *)&entry->thread_id, sizeof(pid_t), &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write thread ID to log file\n");
-        goto close_file;
-    }
-
-    // Write separator
-    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write separator to log file\n");
-        goto close_file;
-    }
-
-    // Write user ID
-    ret = vfs_write(log_file, (char *)&entry->user_id, sizeof(uid_t), &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write user ID to log file\n");
-        goto close_file;
-    }
-
-    // Write separator
-    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write separator to log file\n");
-        goto close_file;
-    }
-
-    // Write effective user ID
-    ret = vfs_write(log_file, (char *)&entry->effective_user_id, sizeof(uid_t), &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write effective user ID to log file\n");
-        goto close_file;
-    }
-
-    // Write separator
-    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write separator to log file\n");
-        goto close_file;
-    }
-
-    // Write program path
-    ret = vfs_write(log_file, entry->program_path, strlen(entry->program_path), &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write program path to log file\n");
-        goto close_file;
-    }
-
-    // Write separator
-    ret = vfs_write(log_file, " | ", 3, &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write separator to log file\n");
-        goto close_file;
-    }
-
-    // Write file content hash
-    ret = vfs_write(log_file, entry->file_content_hash, strlen(entry->file_content_hash), &log_file->f_pos);
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to write file content hash to log file\n");
-        goto close_file;
-    }
-
-close_file:
-    // Close the log file
-    filp_close(log_file, NULL);
+    kfree(entry); // Free memory allocated for log entry
 
     return ret;
+}
+
+
+// Just for debugging
+static void print_log_entry(struct log_entry *entry) {
+    if (!entry) {
+        printk(KERN_ERR "Entry pointer is NULL\n");
+        return;
+    }
+
+    printk(KERN_INFO "Command: %s\n", entry->cmd);
+    printk(KERN_INFO "Process TGID: %d\n", entry->process_tgid);
+    printk(KERN_INFO "Thread ID: %d\n", entry->thread_id);
+    printk(KERN_INFO "User ID: %d\n", entry->user_id);
+    printk(KERN_INFO "Effective User ID: %d\n", entry->effective_user_id);
+    printk(KERN_INFO "Program Path: %s\n", entry->program_path);
+    printk(KERN_INFO "File Content Hash: %s\n", entry->file_content_hash);
 }

@@ -21,6 +21,7 @@
 #define STATE_MAX_LENGTH 16
 #define CMD_SIZE 5
 #define LOG_PATH "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/singlefile-FS/mount/the-log"
+
 extern struct reference_monitor* monitor;
 
 enum State {

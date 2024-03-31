@@ -84,7 +84,7 @@ int register_hook(struct kretprobe *the_probe, char * the_func){
 /* VFSOPEN HANDLERS */
 static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     // vfsopen pre handler
-    struct log_entry log_entry;
+    struct log_entry* log_entry;
     struct path* path;
     struct dentry* dentry;
     struct inode * inode;
@@ -95,8 +95,6 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     // Check if the module is OFF or REC-OFF, in that case doesn't need to execute the post handler
     if(monitor->state == 0 || monitor->state == 1)
         goto end;
-
-
 
     // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
    
@@ -116,7 +114,7 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC){
         // Check if file is protected
         if (inode_in_protected_paths(inode->i_ino)){
-            write_log_entry(&log_entry,"OPN");
+            write_log_entry(log_entry,"OPN");
 
             // ADD WRITE-REPORT ON LOG FILE
             printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);

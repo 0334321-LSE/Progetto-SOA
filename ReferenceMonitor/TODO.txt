@@ -1,9 +1,6 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Controlla che cosa succede se si sfora la size di byte disponibili nel file.
-
-- Controlla perché la scrittura sul log non funziona.
-- Implementa la scrittura sul log dei file/directory protetti (in defered work)
+- Defered work
 
 - Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
 
