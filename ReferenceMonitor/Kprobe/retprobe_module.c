@@ -12,6 +12,10 @@
 #include <linux/fs_struct.h>
 #include <linux/namei.h>
 #include <linux/dcache.h>
+#include <linux/workqueue.h>
+#include <linux/completion.h>
+
+
 
 #include "open_flags.h"
 
@@ -54,6 +58,38 @@ static unsigned long create_audit_counter = 0;//just to audit how many times mkd
 static unsigned long symlink_audit_counter = 0;//just to audit how many times symlink_krobe has been called
 #endif
 
+struct packed_work{
+    struct log_entry * the_entry;
+    struct work_struct get_log_work;
+    struct work_struct write_log_work;
+    struct completion get_log_completion;
+};
+
+// DEFERED WORK
+// get-log-info:
+static void get_log_work_function(struct work_struct *work) {
+    struct packed_work *p_work = container_of(work, struct packed_work, get_log_work);
+    struct log_entry* entry = p_work->the_entry;
+
+    get_path_and_hash(entry);
+    // Signal completion of get_log_work
+    complete(&p_work->get_log_completion);
+    printk("get_log done\n");
+}
+
+static void write_log_work_function(struct work_struct *work) {
+    struct packed_work *p_work = container_of(work, struct packed_work, write_log_work);
+    struct log_entry* entry = p_work->the_entry;
+    
+    // Wait until get_log_work is completed
+    wait_for_completion(&p_work->get_log_completion);
+
+    // Perform the logging operation
+    write_log_entry(entry);
+    printk("write_log done\n");
+}
+// ---------------------------------------
+
 // Usefull for debugging
 void print_flag(int flags){
 // Stampa le flags di apertura del file
@@ -84,11 +120,11 @@ int register_hook(struct kretprobe *the_probe, char * the_func){
 /* VFSOPEN HANDLERS */
 static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     // vfsopen pre handler
-    struct log_entry* log_entry;
     struct path* path;
     struct dentry* dentry;
     struct inode * inode;
     struct file * file;
+    struct packed_work* the_task;
     const char *pathname;
     int flags;
 
@@ -114,7 +150,21 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC){
         // Check if file is protected
         if (inode_in_protected_paths(inode->i_ino)){
-            write_log_entry(log_entry,"OPN");
+            the_task = kmalloc(sizeof(struct packed_work),GFP_ATOMIC);//non blocking memory allocation
+            the_task->the_entry = kmalloc(sizeof(struct log_entry),GFP_ATOMIC);//non blocking memory allocation
+            get_log_info(the_task->the_entry,"OPN");
+
+            // Initialize and schedule work
+            INIT_WORK(&the_task->get_log_work, get_log_work_function);
+
+            INIT_WORK(&the_task->write_log_work, write_log_work_function);
+
+            // Initialize completion variable
+            init_completion(&the_task->get_log_completion);
+
+            schedule_work(&the_task->get_log_work);
+
+            schedule_work(&the_task->write_log_work);
 
             // ADD WRITE-REPORT ON LOG FILE
             printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);
@@ -132,7 +182,7 @@ end:
     return 1;
 }
 
-/* MAY_OPEN HANDLERS */
+/* MAY_OPEN HANDLERS 
 static int mayopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     // mayopen pre handler
 
@@ -179,10 +229,12 @@ end:
     // Doesn't execute the post handler, the access is legit
     return 1;
 }
+*/
+
 
 static int open_post_handler(struct kretprobe_instance *ri, struct pt_regs *the_regs) {
     the_regs->ax = -EACCES; 
-    printk("%s: Open blocked\n", MODNAME);
+    //printk("%s: Open blocked\n", MODNAME);
 
     return 0;
 }
@@ -219,7 +271,7 @@ end:
 
 static int unlink_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: Unlink blocked\n", MODNAME);
+    //printk("%s: Unlink blocked\n", MODNAME);
 
     return 0;
 }
@@ -259,7 +311,7 @@ end:
 
 static int rmdir_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: Rmdir blocked\n", MODNAME);
+    //printk("%s: Rmdir blocked\n", MODNAME);
 
     return 0;
 }
@@ -299,7 +351,7 @@ end:
 
 static int rename_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: Rename blocked\n", MODNAME);
+    //printk("%s: Rename blocked\n", MODNAME);
 
     return 0;
 }
@@ -337,7 +389,7 @@ end:
 
 static int mkdir_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: Mkdir blocked\n", MODNAME);
+    //printk("%s: Mkdir blocked\n", MODNAME);
 
     return 0;
 }
@@ -377,7 +429,7 @@ end:
 
 static int create_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: create blocked\n", MODNAME);
+    //printk("%s: create blocked\n", MODNAME);
 
     return 0;
 }
@@ -505,6 +557,7 @@ static int hook_init(void) {
     if ( register_hook(&symlink_retprobe, symlink_func) < 0)
         return -1;
     #endif
+
     return 0;
 }
 

@@ -213,7 +213,7 @@ return count;
 
 int onefilefs_open(struct inode *inode, struct file *file) {
     // Block open with O_CREAT or O_TRUNCT that can clean log content
-    if (file->f_flags & (O_CREAT | O_TRUNC | O_WRITE | O_RDWR)) {
+    if (file->f_flags & (O_CREAT | O_TRUNC | O_WRONLY | O_RDWR | O_APPEND)) {
         printk("%s: Open blocked \n", MOD_NAME);
         return -EPERM;
     }

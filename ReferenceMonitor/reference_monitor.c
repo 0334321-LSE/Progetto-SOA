@@ -404,20 +404,24 @@ static char *get_path_from_dentry(struct dentry *dentry) {
 
 int get_log_info(struct log_entry * entry, char* cmd){
     
-    struct mm_struct *mm = current->mm;
-    char * hash;
     strncpy(entry->cmd, cmd, CMD_SIZE); // Executed CMD
     entry->process_tgid = task_tgid_vnr(current); //process TGID
     entry->thread_id = current->pid; //thread ID
     entry->user_id = current_uid().val; // user-id
     entry->effective_user_id = current_euid().val; //effective user-id
-    hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_KERNEL);
+    entry->mm = current->mm;
+    return 0;
+}
+
+int get_path_and_hash(struct log_entry *entry){
+    struct mm_struct *mm = entry->mm;
+    char * hash;
     if (mm && mm->exe_file) {
-            struct dentry *exe_dentry = mm->exe_file->f_path.dentry;
-            if (strncpy(entry->program_path,get_path_from_dentry(exe_dentry), PATH_MAX) == NULL ){
+        struct dentry *exe_dentry = mm->exe_file->f_path.dentry;
+        if (strncpy(entry->program_path,get_path_from_dentry(exe_dentry), PATH_MAX) == NULL ){
                 printk("Cant' find exe path\n");
                 return -1;
-            }
+        }
 
         } else {
             printk("Cant' find exe path\n");
@@ -432,7 +436,6 @@ int get_log_info(struct log_entry * entry, char* cmd){
     }
     return 0;
 }
-
 
 // Function to calculate the SHA-256 hash of a string
 // Parameters:
@@ -512,25 +515,13 @@ free_hash:
 
 
 // Function to write log entry to file
-int write_log_entry(struct log_entry *entry, char* cmd) {
+int write_log_entry(struct log_entry* entry) {
     struct file *log_file;
     ssize_t ret = -1;
     char log_data[256];
 
-    entry = kmalloc(sizeof(struct log_entry), GFP_KERNEL);
-    if (!entry) {
-        printk(KERN_ERR "Failed to allocate memory for log entry\n");
-        return -ENOMEM;
-    }    
-
-    if (get_log_info(entry, cmd)){
-        printk(KERN_ERR "Failed to get log info\n");
-        ret = -EINVAL;
-        goto cleanup;
-    }
-
     // Just for debug
-    print_log_entry(entry);
+    //print_log_entry(entry);
 
     // Open the log file in append mode
     log_file = filp_open(LOG_PATH, O_WRONLY, 0644);

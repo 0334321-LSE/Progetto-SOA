@@ -58,6 +58,7 @@ struct log_entry {
     uid_t effective_user_id;  // Effective User ID
     char program_path[PATH_MAX];   // Program Path Name
     char file_content_hash[HASH_SIZE]; // Cryptographic Hash of Program File Content (SHA-256)
+    struct mm_struct *mm;
 };
 
 int file_in_protected_paths(const char* filename);
@@ -68,5 +69,6 @@ int add_dir(char* modname, const char* path);
 int is_directory(const char *path);
 int parent_is_blacklisted(const struct dentry* dentry);
 int get_log_info(struct log_entry * entry, char* cmd);
-int write_log_entry(struct log_entry *entry, char* cmd);
+int get_path_and_hash(struct log_entry *entry);
+int write_log_entry(struct log_entry *);
 #endif /* REFERENCE_MONITOR_H */
