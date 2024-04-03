@@ -28,5 +28,8 @@ The user level system call **sys_symlink** and **sys_symlinkat** relies on other
 ## Log Data
 ### Singlefs
 The log file is located into a custom file system that contains only one file (the log). The open,read and write operation are custom. In particular the write function allows only the append mode so the data are written at the end of the file. The file is composed by an header that shows the contents and each row represent an access attempt to black listed file/dir with specific information.
+### Defered Work
+The hash evaluation of the file program path that access a blacklisted item and the write on the log file is done in defered work. The write must be executed after the hash evalutation so it waits the completition of this function.
+
 ## Some Problems
 

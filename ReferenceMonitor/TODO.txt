@@ -1,8 +1,10 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Defered work
+- Aggiungi password cifrata nel monitor.
 
-- Fai in modo che soltanto ROOT può cambiare stato aggiungere e rimuovere path.
+- Sistema il path relativo con cui si accede al file di log.
+
+- In alcuni casi non trova il path che ha eseguito il comando scopri perché.
 
 - Fai un interfaccia user con cui interagire col monitor. Attento all'inserimento di spazi nei path.
 

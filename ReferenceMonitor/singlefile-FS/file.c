@@ -24,7 +24,7 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
     loff_t offset;
     int block_to_read;//index of the block to be read from device
 
-    printk("%s: read operation called with len %ld - and offset %lld (the current file size is %lld)",MOD_NAME, len, *off, file_size);
+    //printk("%s: read operation called with len %ld - and offset %lld (the current file size is %lld)",MOD_NAME, len, *off, file_size);
 
     //this operation is not synchronized 
     //*off can be changed concurrently 
@@ -45,7 +45,7 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
     //compute the actual index of the the block to be read from device
     block_to_read = *off / DEFAULT_BLOCK_SIZE + 2; //the value 2 accounts for superblock and file-inode on device
     
-    printk("%s: read operation must access block %d of the device",MOD_NAME, block_to_read);
+    //printk("%s: read operation must access block %d of the device",MOD_NAME, block_to_read);
 
     bh = (struct buffer_head *)sb_bread(filp->f_path.dentry->d_inode->i_sb, block_to_read);
     if(!bh){
@@ -212,8 +212,9 @@ return count;
 
 
 int onefilefs_open(struct inode *inode, struct file *file) {
+
     // Block open with O_CREAT or O_TRUNCT that can clean log content
-    if (file->f_flags & (O_CREAT | O_TRUNC | O_WRONLY | O_RDWR | O_APPEND)) {
+    if (file->f_flags & (O_CREAT | O_TRUNC)) {
         printk("%s: Open blocked \n", MOD_NAME);
         return -EPERM;
     }

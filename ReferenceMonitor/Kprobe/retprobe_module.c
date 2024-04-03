@@ -74,9 +74,9 @@ static void get_log_work_function(struct work_struct *work) {
     get_path_and_hash(entry);
     // Signal completion of get_log_work
     complete(&p_work->get_log_completion);
-    printk("get_log done\n");
+    //printk("get_log done\n");
 }
-
+// write info on log:
 static void write_log_work_function(struct work_struct *work) {
     struct packed_work *p_work = container_of(work, struct packed_work, write_log_work);
     struct log_entry* entry = p_work->the_entry;
@@ -86,9 +86,28 @@ static void write_log_work_function(struct work_struct *work) {
 
     // Perform the logging operation
     write_log_entry(entry);
-    printk("write_log done\n");
+    //printk("write_log done\n");
 }
 // ---------------------------------------
+
+static void schedule_defered_work(char * cmd){
+    struct packed_work* the_task;
+    the_task = kmalloc(sizeof(struct packed_work),GFP_ATOMIC);//non blocking memory allocation
+    the_task->the_entry = kmalloc(sizeof(struct log_entry),GFP_ATOMIC);//non blocking memory allocation
+    get_log_info(the_task->the_entry, cmd);
+
+    // Initialize and schedule work
+    INIT_WORK(&the_task->get_log_work, get_log_work_function);
+
+    INIT_WORK(&the_task->write_log_work, write_log_work_function);
+
+    // Initialize completion variable
+    init_completion(&the_task->get_log_completion);
+
+    schedule_work(&the_task->get_log_work);
+
+    schedule_work(&the_task->write_log_work);
+}
 
 // Usefull for debugging
 void print_flag(int flags){
@@ -124,7 +143,6 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     struct dentry* dentry;
     struct inode * inode;
     struct file * file;
-    struct packed_work* the_task;
     const char *pathname;
     int flags;
 
@@ -150,24 +168,11 @@ static int vfsopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC){
         // Check if file is protected
         if (inode_in_protected_paths(inode->i_ino)){
-            the_task = kmalloc(sizeof(struct packed_work),GFP_ATOMIC);//non blocking memory allocation
-            the_task->the_entry = kmalloc(sizeof(struct log_entry),GFP_ATOMIC);//non blocking memory allocation
-            get_log_info(the_task->the_entry,"OPN");
+            
+            //Write on log
+            schedule_defered_work("OPEN");
 
-            // Initialize and schedule work
-            INIT_WORK(&the_task->get_log_work, get_log_work_function);
-
-            INIT_WORK(&the_task->write_log_work, write_log_work_function);
-
-            // Initialize completion variable
-            init_completion(&the_task->get_log_completion);
-
-            schedule_work(&the_task->get_log_work);
-
-            schedule_work(&the_task->write_log_work);
-
-            // ADD WRITE-REPORT ON LOG FILE
-            printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);
+            //printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);
             atomic_inc((atomic_t*)&open_audit_counter);
 
             //print_flag(flags);
@@ -181,56 +186,6 @@ end:
     // Doesn't execute the post handler, the access is legit
     return 1;
 }
-
-/* MAY_OPEN HANDLERS 
-static int mayopen_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
-    // mayopen pre handler
-
-    struct path* path;
-    struct dentry* dentry;
-    struct inode * inode;
-    const char *pathname;
-    int flags;
-
-    // Check if the module is OFF or REC-OFF, in that case doesn't need to execute the post handler
-    if(monitor->state == 0 || monitor->state == 1)
-        goto end;
-
-
-    atomic_inc((atomic_t*)&open_audit_counter);
-
-    // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
-   
-    //int may_open(struct mnt_idmap *idmap, const struct path *path, int acc_mode, int flag)
-    // path is the second parameter, it contains thedentry.
-    path = (struct path *) the_regs->si; 
-    dentry = path->dentry;
-    inode = dentry->d_inode;
-    pathname = dentry->d_name.name;
-
-    // flags is the fourth parameter 
-    flags = (int) the_regs->r10;
-
-
-    // Check if the file is opened WRITE-ONLY or READ-WRITE
-    if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC){
-        // Check if file is protected
-        if (inode_in_protected_paths(inode->i_ino)){
-            // ADD WRITE-REPORT ON LOG FILE
-            printk("%s: Access on %s blocked correctly \n", MODNAME,pathname);
-            print_flag(flags);
-            //The kretprobe post handler should be executed: the access must be blocked
-            return 0;
-        }
-
-    } 
-
-end: 
-    // Doesn't execute the post handler, the access is legit
-    return 1;
-}
-*/
-
 
 static int open_post_handler(struct kretprobe_instance *ri, struct pt_regs *the_regs) {
     the_regs->ax = -EACCES; 
@@ -259,9 +214,12 @@ static int unlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_
     target = dentry->d_inode;
 
     if(inode_in_protected_paths(target->i_ino)){
+        
+        //Write on log
+        schedule_defered_work("UNLK");
         atomic_inc((atomic_t*)&unlink_audit_counter);
 
-        printk("%s: Unlink on %s blocked correctly \n", MODNAME,dentry->d_name.name);
+        //printk("%s: Unlink on %s blocked correctly \n", MODNAME,dentry->d_name.name);
         return 0;
     }
 
@@ -299,7 +257,8 @@ static int rmdir_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_r
 
 
     if(inode_in_protected_paths(target->i_ino)){
-        // ADD TO LOG   
+        //Write on log
+        schedule_defered_work("RDIR");
         atomic_inc((atomic_t*)&rmdir_audit_counter);
         printk("%s: Rmdir on %s blocked correctly \n", MODNAME,dentry->d_name.name);
         return 0;
@@ -339,9 +298,10 @@ static int rename_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_
     
 
     if(inode_in_protected_paths(target->i_ino)){
-        // ADD TO LOG
+        //Write on log
+        schedule_defered_work("RENM");
         atomic_inc((atomic_t*)&rename_audit_counter);
-        printk("%s: Rename on %s blocked correctly \n", MODNAME,dentry->d_name.name);
+       // printk("%s: Rename on %s blocked correctly \n", MODNAME,dentry->d_name.name);
         return 0;
     }
 
@@ -377,9 +337,10 @@ static int mkdir_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_r
 
 
     if(inode_in_protected_paths(target->i_ino)){
-        // ADD TO LOG
+        //Write on log
+        schedule_defered_work("MDIR");
         atomic_inc((atomic_t*)&mkdir_audit_counter);
-        printk("%s: Mkdir on %s blocked correctly \n", MODNAME,dentry->d_name.name);
+        //printk("%s: Mkdir on %s blocked correctly \n", MODNAME,dentry->d_name.name);
         return 0;
     }
 
@@ -417,9 +378,10 @@ static int create_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_
     parent_dentry = dentry->d_parent;
 
     if(inode_in_protected_paths(target->i_ino)){
-        // ADD TO LOG
+        //Write on log
+        schedule_defered_work("CRTE");
         atomic_inc((atomic_t*)&create_audit_counter);
-        printk("%s: Create on %s of %s blocked correctly \n", MODNAME,parent_dentry->d_name.name, dentry->d_name.name);
+        //printk("%s: Create on %s of %s blocked correctly \n", MODNAME,parent_dentry->d_name.name, dentry->d_name.name);
         return 0;
     }
 
@@ -455,8 +417,9 @@ static int symlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
     atomic_inc((atomic_t*)&symlink_audit_counter);
 
     if(file_in_protected_paths(old_name)){
-        //ADD TO LOG
-        printk("%s: Symlink on %s blocked correctly \n", MODNAME,old_name);
+        //Write on log
+        schedule_defered_work("SLNK");
+        //printk("%s: Symlink on %s blocked correctly \n", MODNAME,old_name);
         return 0;
     }
 
@@ -466,7 +429,7 @@ end:
 
 static int symlink_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
     the_regs->ax = -1;
-    printk("%s: Symlink blocked\n", MODNAME);
+    //printk("%s: Symlink blocked\n", MODNAME);
 
     return 0;
 }

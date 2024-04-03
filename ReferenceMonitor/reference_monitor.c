@@ -130,7 +130,7 @@ int add_dir(char* modname, const char* path){
 static bool add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type) {
 	char *full_path;
     char *file_name;
-    char last_char;
+    //char last_char;
 	// retrieve base dir path from struct custom_dir_context 
 	struct my_dir_context *my_ctx = container_of(ctx, struct my_dir_context, dir_ctx);
 
@@ -226,7 +226,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
 #endif
 	char *full_path;
     char *file_name;
-    char last_char;
+    //char last_char;
 	// retrieve base dir path from struct custom_dir_context 
 	struct my_dir_context *my_ctx = container_of(ctx, struct my_dir_context, dir_ctx);
 
@@ -415,7 +415,8 @@ int get_log_info(struct log_entry * entry, char* cmd){
 
 int get_path_and_hash(struct log_entry *entry){
     struct mm_struct *mm = entry->mm;
-    char * hash;
+    char * hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_ATOMIC);
+
     if (mm && mm->exe_file) {
         struct dentry *exe_dentry = mm->exe_file->f_path.dentry;
         if (strncpy(entry->program_path,get_path_from_dentry(exe_dentry), PATH_MAX) == NULL ){
@@ -453,7 +454,7 @@ static int calculate_sha256(const char *input, size_t input_len, char *output) {
     int i;
 
     // Allocate memory for the hash buffer
-    hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_KERNEL);
+    hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_ATOMIC);
     if (!hash) {
         printk(KERN_ERR "Failed to allocate hash buffer\n");
         return -ENOMEM;
@@ -533,7 +534,7 @@ int write_log_entry(struct log_entry* entry) {
     }
 
     // Format file string
-    snprintf(log_data, sizeof(log_data), "|| %s || %d || %d || %u || %u || %s || %s \n",
+    snprintf(log_data, sizeof(log_data), "|| %s || %d || %d || %u || %u || %s - %s ||\n",
         entry->cmd, entry->thread_id, entry->process_tgid, entry->user_id,
         entry->effective_user_id, entry->program_path, entry->file_content_hash);
     

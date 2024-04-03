@@ -24,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
+#include <linux/cred.h>
 #include <linux/errno.h>
 #include <linux/device.h>
 #include <linux/kprobes.h>
@@ -179,6 +180,13 @@ asmlinkage long sys_state_update(char* state ,char* password){
 		// Vector of states for cute printing
 		const char* states[] = {"OFF", "REC_OFF", "ON", "REC_ON"};
 		char* kernel_password;
+
+		// Check effective user id
+		 if (!uid_eq(current_euid(), GLOBAL_ROOT_UID)) {
+		printk("%s: Only root user can re-configure monitor .\n",MODNAME);
+		return-EPERM; // Must be root
+		}
+	
 		// Check monitor
 		if ( !monitor ){
 			printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
@@ -242,7 +250,13 @@ asmlinkage long sys_configure_path(char* path ,char* password, int mod){
 	char *kernel_password;
 	char *kernel_path;
 	struct protected_path *entry, *tmp;
-
+	
+	// Check effective user id
+	 if (!uid_eq(current_euid(), GLOBAL_ROOT_UID)) {
+		printk("%s: Only root user can re-configure monitor .\n",MODNAME);
+		return-EPERM; // Must be root
+	}
+	
 	// Check monitor
 	if ( !monitor ){
 		printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
@@ -374,9 +388,9 @@ asmlinkage long sys_print_paths(char* password){
 
 	spin_lock(&monitor->lock);
 	i=1;
+
 	// Print all the entry
 	list_for_each_entry(entry, &monitor->protected_paths, list) {
-
 		printk("%s: Protected path-%d  %s \n",MODNAME, i,entry->path_name);
 		i++;
 	}
