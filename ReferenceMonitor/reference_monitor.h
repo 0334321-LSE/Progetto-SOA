@@ -16,11 +16,12 @@
 #include <linux/sched.h>
 
 // MAX PASW SIZE
-#define PASW_MAX_LENGTH 64
+#define PASW_MAX_LENGTH 65
 #define HASH_SIZE 65
 #define STATE_MAX_LENGTH 16
 #define CMD_SIZE 5
 #define LOG_PATH "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/singlefile-FS/mount/the-log"
+#define PASW "6d7e0406ffff04ffff60ffff0503ffffff05ff0dff50ffffffffff06ff7bff6c"
 
 extern struct reference_monitor* monitor;
 
@@ -58,7 +59,7 @@ struct log_entry {
     uid_t effective_user_id;  // Effective User ID
     char program_path[PATH_MAX];   // Program Path Name
     char file_content_hash[HASH_SIZE]; // Cryptographic Hash of Program File Content (SHA-256)
-    struct mm_struct *mm;
+    struct dentry* exe_dentry;
 };
 
 int file_in_protected_paths(const char* filename);
@@ -68,7 +69,9 @@ int add_file(char* modname, const char* path);
 int add_dir(char* modname, const char* path);
 int is_directory(const char *path);
 int parent_is_blacklisted(const struct dentry* dentry);
+char * get_sha(char* paswd);
 int get_log_info(struct log_entry * entry, char* cmd);
 int get_path_and_hash(struct log_entry *entry);
-int write_log_entry(struct log_entry *);
+int write_log_entry(struct log_entry * entry);
+
 #endif /* REFERENCE_MONITOR_H */

@@ -152,5 +152,5 @@ module_exit(singlefilefs_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
 MODULE_DESCRIPTION("SINGLE-FILE-FS is a module created by Francesco Quaglia Francesco Quaglia <francesco.quaglia@uniroma2.it>, extended for reference monitor application. \
-Now support also write operation that will be executed append only.");
+Now support also write operation from kernel that will be executed in append only mode.");
 

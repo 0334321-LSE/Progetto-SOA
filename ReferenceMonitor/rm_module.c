@@ -72,7 +72,7 @@ void reference_monitor_cleanup(void) {
 // Module initialization
 int init_module(void) {
     int ret;
-    char* pasw = "abc";
+    char* pasw = PASW;
     
     // Allocate monitor
     monitor = kmalloc(sizeof(struct reference_monitor), GFP_KERNEL);

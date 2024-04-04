@@ -4,4 +4,3 @@ make
 sudo insmod the_rm.ko
 sudo insmod the_usctm.ko
 sudo insmod the_retprobe.ko
-

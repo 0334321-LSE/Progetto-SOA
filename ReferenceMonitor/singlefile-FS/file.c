@@ -230,7 +230,7 @@ struct dentry *onefilefs_lookup(struct inode *parent_inode, struct dentry *child
     struct buffer_head *bh = NULL;
     struct inode *the_inode = NULL;
 
-    printk("%s: running the lookup inode-function for name %s",MOD_NAME,child_dentry->d_name.name);
+    //printk("%s: running the lookup inode-function for name %s",MOD_NAME,child_dentry->d_name.name);
 
     if(!strcmp(child_dentry->d_name.name, UNIQUE_FILE_NAME)){
 

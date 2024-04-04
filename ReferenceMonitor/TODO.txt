@@ -1,13 +1,12 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Aggiungi password cifrata nel monitor.
-
 - Sistema il path relativo con cui si accede al file di log.
-
-- In alcuni casi non trova il path che ha eseguito il comando scopri perché.
-
-- Fai un interfaccia user con cui interagire col monitor. Attento all'inserimento di spazi nei path.
 
 - Fai dei make file più decenti
 
 - Controlla che tutta la specifica sia rispettata
+
+- Nella documentazione specifca come funzionano le system call ed il loro paraemtri
+
+- Cerca di capire perché si bugga nella rimozione dei moduli e nel blacklisting di /home/xave.
+

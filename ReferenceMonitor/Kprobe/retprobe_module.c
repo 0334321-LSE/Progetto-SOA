@@ -29,7 +29,6 @@ and check if black-listed path are touched by this function, in that case: block
 PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the specific system call calling convention of this architectures.");
 
 #define open_func "vfs_open"
-#define mayopen_func "may_open"
 
 #define unlink_func "security_path_unlink"
 
@@ -41,10 +40,15 @@ PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the s
 
 #define create_func "security_inode_create"
 
-//#define SYMLINK
+#define SYMLINK
+#define LINK
 
 #ifdef SYMLINK
     #define symlink_func "security_path_symlink"
+#endif
+
+#ifdef LINK
+    #define link_func "security_inode_link"
 #endif
 
 static unsigned long open_audit_counter = 0;//just to audit how many times open_krobe has been called
@@ -55,7 +59,11 @@ static unsigned long mkdir_audit_counter = 0;//just to audit how many times mkdi
 static unsigned long create_audit_counter = 0;//just to audit how many times mkdir_krobe has been called
 
 #ifdef SYMLINK
-static unsigned long symlink_audit_counter = 0;//just to audit how many times symlink_krobe has been called
+    static unsigned long symlink_audit_counter = 0;//just to audit how many times symlink_krobe has been called
+#endif
+
+#ifdef LINK
+    static unsigned long link_audit_counter = 0;//just to audit how many times symlink_krobe has been called
 #endif
 
 struct packed_work{
@@ -260,7 +268,7 @@ static int rmdir_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_r
         //Write on log
         schedule_defered_work("RDIR");
         atomic_inc((atomic_t*)&rmdir_audit_counter);
-        printk("%s: Rmdir on %s blocked correctly \n", MODNAME,dentry->d_name.name);
+        //printk("%s: Rmdir on %s blocked correctly \n", MODNAME,dentry->d_name.name);
         return 0;
     }
 
@@ -398,12 +406,9 @@ static int create_post_handler(struct kretprobe_instance *p, struct pt_regs *the
 
 //----------------------------
 
-#ifdef SYMLINK
 // SYMLINK HANDLERS
+#ifdef SYMLINK
 static int symlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
-    struct dentry *dentry;
-    struct inode *inode;
-    struct path* path;
     const char * old_name;
     // Check if the module is OFF or REC-OFF, in that case doesn't need to execute the post handler
     if(monitor->state == 0 || monitor->state == 1)
@@ -414,11 +419,12 @@ static int symlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the
 
     // old name is the target file path
     old_name = (char *) the_regs->dx;
-    atomic_inc((atomic_t*)&symlink_audit_counter);
+   
 
     if(file_in_protected_paths(old_name)){
         //Write on log
         schedule_defered_work("SLNK");
+        atomic_inc((atomic_t*)&symlink_audit_counter);
         //printk("%s: Symlink on %s blocked correctly \n", MODNAME,old_name);
         return 0;
     }
@@ -437,6 +443,44 @@ static int symlink_post_handler(struct kretprobe_instance *p, struct pt_regs *th
 //----------------------------
 #endif
 
+// LINK HANDLERS
+#ifdef LINK
+static int link_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    struct dentry *dentry;
+    struct inode *target; 
+
+    // Check if the module is OFF or REC-OFF, in that case doesn't need to execute the post handler
+    if(monitor->state == 0 || monitor->state == 1)
+        goto end;
+        
+    // x86-64 syscall calling convention: %rdi, %rsi, %rdx, %r10, %r8 and %r9.
+    /* int security_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)*/
+
+    // old dentry is the originale file dentry
+    dentry = (struct dentry *) the_regs->di;
+    target = dentry->d_inode;
+
+    if(inode_in_protected_paths(target->i_ino)){
+        
+        schedule_defered_work("HLNK");
+        atomic_inc((atomic_t*)&link_audit_counter);
+        //printk("%s: Link on %s blocked correctly \n", MODNAME,old_name);
+        return 0;
+    }
+
+end:
+    return 1;
+}
+
+static int link_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    the_regs->ax = -1;
+    //printk("%s: Link blocked\n", MODNAME);
+
+    return 0;
+}
+
+//----------------------------
+#endif
 static struct kretprobe open_retprobe = {
     .kp.symbol_name = open_func, // Nome della funzione da intercettare
     .handler = open_post_handler, // Gestore dell'uscita della kretprobe
@@ -489,6 +533,15 @@ static struct kretprobe symlink_retprobe = {
 };
 #endif
 
+#ifdef LINK
+static struct kretprobe link_retprobe = {
+    .kp.symbol_name = link_func, // Nome della funzione da intercettare
+    .handler = link_post_handler, // Gestore dell'uscita della kretprobe
+    .entry_handler = link_pre_handler, // Gestore dell'entrata della kretprobe
+    .maxactive = -1 // Numero massimo di kretprobes attive, -1 per il valore predefinito
+};
+#endif
+
 static int hook_init(void) {
  
     // OPEN
@@ -521,6 +574,13 @@ static int hook_init(void) {
         return -1;
     #endif
 
+    #ifdef LINK
+    // LINK
+    if ( register_hook(&link_retprobe, link_func) < 0)
+        return -1;
+    #endif
+
+
     return 0;
 }
 
@@ -539,6 +599,10 @@ static void  hook_exit(void) {
         unregister_kretprobe(&symlink_retprobe);
     #endif
 
+    #ifdef SYMLINK
+        unregister_kretprobe(&link_retprobe);
+    #endif
+
 
 
     printk("%s: %s hook invoked %lu times\n",MODNAME, open_func ,open_audit_counter);
@@ -546,10 +610,13 @@ static void  hook_exit(void) {
     printk("%s: %s hook invoked %lu times\n",MODNAME, rmdir_func ,rmdir_audit_counter);
     printk("%s: %s hook invoked %lu times\n",MODNAME, rename_func ,rename_audit_counter);
     printk("%s: %s hook invoked %lu times\n",MODNAME, mkdir_func ,mkdir_audit_counter);
-    printk("%s: %s hook invoked %lu times\n",MODNAME, mkdir_func ,create_audit_counter);
+    printk("%s: %s hook invoked %lu times\n",MODNAME, create_func ,create_audit_counter);
 
     #ifdef SYMLINK
         printk("%s: %s hook invoked %lu times\n",MODNAME, symlink_func ,symlink_audit_counter);
+    #endif
+    #ifdef SYMLINK
+        printk("%s: %s hook invoked %lu times\n",MODNAME, symlink_func ,link_audit_counter);
     #endif
 
     printk("%s: Kretprobes unregistered\n",MODNAME);
