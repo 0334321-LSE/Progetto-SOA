@@ -8,5 +8,7 @@
 
 - Nella documentazione specifca come funzionano le system call ed il loro paraemtri
 
+- Se monitor offline blocca il client.
+
 - Cerca di capire perché si bugga nella rimozione dei moduli e nel blacklisting di /home/xave.
 
