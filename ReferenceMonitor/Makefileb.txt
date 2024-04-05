@@ -1,0 +1,34 @@
+MAKE = make -C
+
+all:
+	$(MAKE) /lib/modules/$(shell uname -r)/build M=$(PWD)/Monitor modules
+	$(MAKE) /lib/modules/$(shell uname -r)/build M=$(PWD)/LinuxSCTFinder modules
+	$(MAKE) /lib/modules/$(shell uname -r)/build M=$(PWD)/Kprobe modules
+	$(MAKE) /lib/modules/$(shell uname -r)/build M=$(PWD)/singlefile-FS modules
+	gcc ./user/client.c -o client
+
+clean:
+	$(MAKE) $(PWD)/Monitor clean
+	$(MAKE) $(PWD)/LinuxSCTFinder clean
+	$(MAKE) $(PWD)/Kprobe clean
+	$(MAKE) $(PWD)/singlefile-FS clean
+
+mount: 
+	$(MAKE) Monitor install
+	$(MAKE) LinuxSCTFinder install
+	$(MAKE) Kprobe install
+	$(MAKE) singlefile-FS mount-fs
+	sudo ./client
+
+
+# Remove all installed modules
+uninstall:
+	echo "Removing modules"
+	sudo rmmod singlefilefs
+	echo "singlefilefs removed"
+	sudo rmmod the_retprobe 
+	echo "probe removed"
+	sudo rmmod the_usctm 
+	echo "usctm removed"
+	sudo rmmod the_rm 
+	echo "rm removed

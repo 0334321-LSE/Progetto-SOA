@@ -5,17 +5,21 @@ all:
 	gcc singlefilemakefs.c -o singlefilemakefs
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
-load-FS-driver:
-	insmod singlefilefs.ko
+install: 
+	sudo insmod singlefilefs.ko
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	rm onefilemakefs
 
 create-fs:
 	dd bs=4096 count=100 if=/dev/zero of=image
 	./singlefilemakefs image
-	mkdir mount
 	
-mount-fs:
-	mount -o loop -t singlefilefs image ./mount/
+mount-fs: install create-fs
+		if [ ! -d "/mnt/monitor-fs/" ]; then \
+        sudo mkdir "/mnt/monitor-fs/"; \
+    else \
+        echo "/mnt/monitor-fs/ already exists."; \
+    fi
+
+	sudo mount -o loop -t singlefilefs image /mnt/monitor-fs/

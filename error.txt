@@ -1,0 +1,3 @@
+m2c    -o the_rm.o the_rm.mod
+make: m2c: Command not found
+make: *** [<incorporato>: the_rm.o] Errore 127

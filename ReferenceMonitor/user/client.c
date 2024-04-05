@@ -322,7 +322,6 @@ int main(int argc, char** argv){
     while (1) {
         system("clear");
         get_state(current_state);
-
         // Display the menu
         printf("\n---- Reference Monitor Menu ----\n");
         printf("\n---- Monitor current state: %s ----\n\n",current_state);
