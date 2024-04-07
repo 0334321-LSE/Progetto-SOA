@@ -117,12 +117,12 @@ The objective is to block write-open operations on directories and files by moni
 ### Open
 The systemcalls **sys_open** and **sys_openat** relies on other low level API, see it from [here](https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1423). In particular, **vfs_open** is a low level function used when open is called and is the one that is kprobed. 
 
-For the documentation: [this link](https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1084). 
+For documentation: [this link](https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1084). 
 
 ### Unlink
 The systemcalls **sys_unlink** and **sys_unlinkat** relies on other low level API. Both of these calls internally **security_path_unlink** which checks for permission to remove the link. This API checks if the permission to remove link are granted.
 
-Documentation is available [here]("https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1848). 
+Documentation is available [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1848). 
 
 ### Rmdir
 The systemcalls **sys_rmdir** relies on other low level API. Here too, there is an API that checks permissions named **security_path_rmdir**.  
