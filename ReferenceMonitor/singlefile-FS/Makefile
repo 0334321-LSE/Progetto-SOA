@@ -6,7 +6,12 @@ all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 install: 
-	sudo insmod singlefilefs.ko
+# Check if the filesystem is already mounted
+	if lsmod | grep -q '^singlefilefs\s'; then \
+		echo "Module 'singlefilefs' is already loaded. Skipping installation."; \
+	else \
+		sudo insmod singlefilefs.ko; \
+	fi
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
@@ -16,10 +21,11 @@ create-fs:
 	./singlefilemakefs image
 	
 mount-fs: install create-fs
-		if [ ! -d "/mnt/monitor-fs/" ]; then \
-        sudo mkdir "/mnt/monitor-fs/"; \
-    else \
-        echo "/mnt/monitor-fs/ already exists."; \
-    fi
-
-	sudo mount -o loop -t singlefilefs image /mnt/monitor-fs/
+# Check if the directory '/mnt/monitor-fs/' exists
+	if [ ! -d "/mnt/monitor-fs/" ]; then \
+		sudo mkdir -p "/mnt/monitor-fs/"; \
+	fi
+# Mount the filesystem if it's not already mounted
+	if ! grep -qs '/mnt/monitor-fs' /proc/mounts; then \
+		sudo mount -o loop -t singlefilefs image /mnt/monitor-fs/; \
+	fi

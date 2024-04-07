@@ -6,7 +6,7 @@ obj-m += the_retprobe.o
 
 the_rm-objs := /Monitor/rm_module.o
 the_usctm-objs := /LinuxSCTFinder/usctm.o /LinuxSCTFinder/lib/vtpmo.o reference_monitor.o
-the_retprobe-objs := /Kprobe/retprobe_module.o reference_monitor.o 
+the_retprobe-objs := /Kretprobes/retprobe_module.o reference_monitor.o 
 #singlefilefs-objs += /singlefile-FS/singlefilefs_src.o /singlefile-FS/file.o /singlefile-FS/dir.o
 
 
@@ -37,8 +37,8 @@ uninstall:
 	echo "usctm removed"
 	sudo rmmod the_rm 
 	echo "rm removed"
-	sudo rmmod singlefilefs
-	echo "singlefilefs removed"
+#sudo rmmod singlefilefs
+#echo "singlefilefs removed"
 
 
 	

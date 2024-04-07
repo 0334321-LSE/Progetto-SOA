@@ -7,6 +7,7 @@
 #include <limits.h> // Include for PATH_MAX constant
 
 #define OUTPUT_BUFFER_SIZE ((PATH_MAX + 1) * 1000)
+#define LOG_PATH "/mnt/monitor-fs/the-log"
 
 int get_integer_input(const char *prompt);
 void execute_sys_state_update();
@@ -16,7 +17,7 @@ void execute_sys_configure_path_remove();
 void execute_sys_remove_all_paths();
 void execute_sys_print_paths();
 void print_monitor_log();
-void get_state(char * state);
+int get_state(char * state);
 void execute_command(int command);
 void fix_output();
 
@@ -160,8 +161,13 @@ void execute_sys_configure_path_add() {
         // Check if the path is absolute
         if (path[0] != '/') 
             printf("Error: Path must be absolute.\n");
-        else
-            break;
+        else{
+            if (strlen(path)==1)
+                printf("Error: Can't black list: '/' \n");
+            else
+                break;
+        }
+
     }
 
     // Prompt user for password input
@@ -298,12 +304,19 @@ void execute_sys_print_paths() {
 
 void print_monitor_log(){
     // Execute the cat command to display the contents of the file
-    system("cat ../singlefile-FS/mount/the-log");
+    char command[256];  // Define a buffer to hold the command string
+
+    // Format the command string with the specified LOG_PATH
+    snprintf(command, sizeof(command), "cat %s", LOG_PATH);
+
+    // Execute the command using system
+    system(command);
+
     printf("---------------------------- \n");
 }
 
-void get_state(char * state){
-    syscall(214,state);
+int get_state(char * state){
+    return syscall(214,state);
 }
 
 void fix_output(){
@@ -321,7 +334,12 @@ int main(int argc, char** argv){
 
     while (1) {
         system("clear");
-        get_state(current_state);
+        if(get_state(current_state)){
+            printf("\n Monitor isn't installed, exiting ...\n");
+            sleep(1);
+            goto exit;
+        }
+
         // Display the menu
         printf("\n---- Reference Monitor Menu ----\n");
         printf("\n---- Monitor current state: %s ----\n\n",current_state);
@@ -355,6 +373,6 @@ int main(int argc, char** argv){
             // Discard characters
         }
     }
-
+exit:
     return 0;
 }

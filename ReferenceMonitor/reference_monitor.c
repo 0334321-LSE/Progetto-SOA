@@ -30,40 +30,42 @@ int is_directory(const char *path) {
 
 int add_file(char* modname, const char* path){
     struct protected_path *entry;
+    int ret = 0;
+    // kmalloc one protected path
+    entry = kmalloc(sizeof(struct protected_path), GFP_KERNEL);
+    if (!entry) {
+        printk("%s: Entry can't be allocated \n",modname);
+        ret = -ENOMEM; 
+        goto end;
+    }
 
- 		// kmalloc one protected path
-		entry = kmalloc(sizeof(struct protected_path), GFP_KERNEL);
-		if (!entry) {
-			printk("%s: Entry can't be allocated \n",modname);
-			kfree(path);
-            return -ENOMEM; 
-		}
+    entry->path_name = kstrdup(path, GFP_KERNEL);
+    if (!entry->path_name){
+        printk("%s: Entry pathname can't be allocated \n",modname);
+        ret = -ENOMEM; 
+        kfree(entry);
+        goto end;
+    }
 
-		entry->path_name = kstrdup(path, GFP_KERNEL);
-		if (!entry->path_name){
-			printk("%s: Entry pathname can't be allocated \n",modname);
-			kfree(path);
-			kfree(entry);
-            return -ENOMEM;
-		}
+    entry->inode_number = get_inode_from_path(path);
+    if (entry->inode_number == 0){
+        printk("%s: Entry inode number can't be found for %s \n",modname, path);
+        ret = -ENOENT;
+        kfree(entry);
+        goto end;
+    }
 
-		entry->inode_number = get_inode_from_path(path);
-		if (entry->inode_number == 0){
-			printk("%s: Entry inode number can't be found \n",modname);
-			kfree(path);
-			kfree(entry);
-            return -ENOENT; 
-		}
+    // Acquire lock to work with the list
+    spin_lock(&monitor->lock);
 
-		// Acquire lock to work with the list
-		spin_lock(&monitor->lock);
+    list_add(&entry->list, &monitor->protected_paths);
 
-		list_add(&entry->list, &monitor->protected_paths);
+    spin_unlock(&monitor->lock);
 
-		spin_unlock(&monitor->lock);
-
-		printk("%s: Path %s with inode: %ld added successfully by %d\n",modname, path, entry->inode_number ,current->pid);
-    return 0;
+    //printk("%s: Path %s with inode: %ld added successfully by %d\n",modname, path, entry->inode_number ,current->pid);
+    
+end:
+    return ret;
 }
 
 int add_dir(char* modname, const char* path){
@@ -71,8 +73,21 @@ int add_dir(char* modname, const char* path){
     struct file *dir;
     struct my_dir_context context;
 
-    // Assegnated in this way to avoid stupid warning 
     context.dir_ctx.actor = &add_entry_actor;
+    // Assegnated in this way to avoid stupid warning 
+    /*
+    context.dir_path = kstrdup(path, GFP_KERNEL);
+    
+    if(!context.dir_path){
+        printk("%s Error during context creation ",modname);
+        return -ENOMEM;
+    }
+    context.modname = kstrdup(modname, GFP_KERNEL);;
+    if(!context.modname){
+        printk("%s Error during context creation ",modname);
+        return -ENOMEM;
+    }
+    */
     context.dir_path = path;
     context.modname = modname;
 
@@ -114,10 +129,10 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
 
 	// Build full path by using parent directory path passed to iterate_dir and current filename:
     // 1 Copy the path of parent dir
-        full_path = kmalloc(strlen(my_ctx->dir_path)+1, GFP_KERNEL);
+        full_path = kmalloc(PATH_MAX, GFP_KERNEL);
         if (!full_path){
             printk("%s: Can't alloc memory for full path \n",modname);
-            ret = false;
+            ret = -ENOMEM;
             goto free_modname;
            
         }
@@ -125,17 +140,12 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
         strcpy(full_path, my_ctx->dir_path);
         
     // 2 Add the file/directory name to this path
-        file_name = kmalloc(strlen(name)+1, GFP_KERNEL);
+        file_name = kstrdup(name, GFP_KERNEL);
         if (!file_name) {
-                printk("%s: kmalloc allocation error (process_dir_entry)\n", modname);
-                ret = false;
-                goto free_fullpath;
+            printk("%s: kmalloc allocation error (process_dir_entry)\n", modname);
+            ret = -ENOMEM;
+            goto free_fullpath;
         }
-
-        strcpy(file_name, name);
-        file_name[strlen(name)] = '\0'; 
-        //printk("%s: Adding filename: %s \n",modname,file_name);
-
 
 	/* exclude current and parent directories */
     if (strcmp(file_name, ".") && strcmp(file_name, "..")) {
@@ -191,6 +201,7 @@ free_modname:
 static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type) {
 	char *full_path;
     char *file_name;
+
     char last_char;
 	// retrieve base dir path from struct custom_dir_context 
 	struct my_dir_context *my_ctx = container_of(ctx, struct my_dir_context, dir_ctx);
@@ -203,8 +214,9 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
     }
 
 	// Build full path by using parent directory path passed to iterate_dir and current filename:
-    // 1 Copy the path of parent dir
-        full_path = kmalloc(strlen(my_ctx->dir_path)+1, GFP_KERNEL);
+    // 1 Copy the path of parent dir and leave the space to append file name
+        
+        full_path = kmalloc(PATH_MAX, GFP_KERNEL);
         if (!full_path){
             printk("%s: Can't alloc memory for full path \n",modname);
             ret = -ENOMEM;
@@ -215,7 +227,14 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
         strcpy(full_path, my_ctx->dir_path);
         
     // 2 Add the file/directory name to this path
-        file_name = kmalloc(strlen(name)+1, GFP_KERNEL);
+         file_name = kstrdup(name, GFP_KERNEL);
+        if (!file_name) {
+            printk("%s: Can't alloc memory for file/dir name)\n", modname);
+            ret = -ENOMEM;
+            goto free_fullpath;
+        }
+
+        /* file_name = kmalloc(strlen(name)+1, GFP_KERNEL);
         if (!file_name) {
                 printk("%s: kmalloc allocation error (process_dir_entry)\n", modname);
                 ret = -ENOMEM;
@@ -224,15 +243,17 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
 
         strcpy(file_name, name);
         file_name[strlen(name)] = '\0'; 
-        //printk("%s: Adding filename: %s \n",modname,file_name);
+        */
 
 
-	/* exclude current and parent directories */
-    if (strcmp(file_name, ".") && strcmp(file_name, "..")) {
-        /* reconstruct file/subdirectory path  */
-        last_char = (full_path[strlen(full_path)-1]);
+	// exclude current and parent directories 
+        if (strcmp(file_name, ".") && strcmp(file_name, "..")) {
+        // reconstruct file/subdirectory path  
+        if (full_path[0] != '\0')
+            last_char = (full_path[strlen(full_path)-1]);
         
-        //printk("%s: Last char: %c",modname,last_char);
+        //printk("%s: Adding filename: %s \n",modname,file_name);
+        //printk("%s: Last char of %s: %c",modname,full_path,last_char);
         
         // add the "/"" to the end if the parent dir path doesn't include it
         if( last_char != '/'){
@@ -243,7 +264,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
             }
         }
         // then add the dir/file name
-        if(strlcat(full_path, file_name, PATH_MAX)>= PATH_MAX){
+        if(strlcat(full_path, file_name, PATH_MAX) >= PATH_MAX){
             printk("%s Failed to concatenate file name to directory path\n",modname);
             ret =  -ENOMEM;
             goto free_filename;
@@ -262,7 +283,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
 
             add_dir(modname, full_path);
                     
-        } else {        /* file */
+        } else {        /* Is a file */
 
             add_file(modname, full_path);
 
@@ -319,7 +340,7 @@ ino_t get_inode_from_path(const char* percorso){
     if (ret == -ENOENT) {
         ret = kern_path(strcat(pathname, "~"), LOOKUP_FOLLOW, &path);
         if (ret){
-            printk("Can't find absolute path");
+            //printk("Can't find absolute path");
             kfree(pathname);
             return 0;
         }    

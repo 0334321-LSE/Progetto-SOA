@@ -290,6 +290,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			kfree(kernel_password);
 			return -EINVAL;  // Not valid password 
 		}
+		
 		// No more usefull
 		kfree(kernel_password);
 
@@ -315,19 +316,24 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			}
 
 			if(is_directory(kernel_path)){
-				if(recursive)
+				if(recursive){
 					//will iterate over the directory and its subdir:
 					add_dir(MODNAME,kernel_path);
-				else
+				}
+				else{
 					add_file(MODNAME,kernel_path);
+				}
+					
 			}	
-			else
+			else{
 				add_file(MODNAME,kernel_path);
+			}
+				
+
 			break;
 			
 		case 1 /* REMOVE*/:
 
-			
 			spin_lock(&monitor->lock);
 
 			// find and remove the path 
@@ -337,9 +343,8 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 					kfree(entry);
 					spin_unlock(&monitor->lock);
 				
-					printk("%s: Path %s removed successfully by %d\n",MODNAME, kernel_path,current->pid);
-					kfree(kernel_path);
-					return 0;
+					//printk("%s: Path %s removed successfully by %d\n",MODNAME, kernel_path,current->pid);
+					goto exit;
 				}
 			}
 			spin_unlock(&monitor->lock);
@@ -354,7 +359,10 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			printk("%s: Modality %d is not supported by this systemcall \n",MODNAME, mod);
 			return -EINVAL;
 		}	
+
+	exit:
 		kfree(kernel_path);
+
 		return 0; // Successo
 	}
 
@@ -377,6 +385,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		size_t output_length = 0;
 		// chars written in the loop for each entry 
 		int chars_written = 0;
+		int ret =0;
 
 		// Check monitor
 		if ( !monitor ){
@@ -395,19 +404,22 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			// Check if there is enough space to concatenate the current path
 			if (remaining_space < PATH_MAX + 10) { // Add a safety margin for the path and formatting
 				printk(KERN_WARNING "Output buffer size too small to hold all paths\n");
-				return -ENOSPC; // Indicate buffer overflow
+				ret = -ENOSPC; 
+				goto exit;
 			}
 			// Concatenate the current path into the output buffer
 			if ((chars_written = snprintf(output + strlen(output), remaining_space,"\n|Path %d: %s", i, entry->path_name)) < 0) {
 				printk(KERN_WARNING "Failed to concatenate path %d\n", i );
-				return -EFAULT; // Indicate error
+				ret = -EFAULT; 
+				goto exit;
 			}
 			i++;
 			output_length += chars_written;
 		}
+	
+	exit:
 		spin_unlock(&monitor->lock);
-
-		return 0;
+		return ret;
 
 	} 
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
@@ -467,7 +479,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		// Remove all the paths 
 		list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
 			
-			printk("%s: Path %s removed successfully by %d\n",MODNAME, entry->path_name,current->pid);
+			//printk("%s: Path %s removed successfully by %d\n",MODNAME, entry->path_name,current->pid);
 			list_del(&entry->list);
 			kfree(entry);		
 		}

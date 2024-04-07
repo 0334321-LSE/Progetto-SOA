@@ -1,10 +1,33 @@
 # SOA 23-24 Project - Reference Monitor
 This is a Kernel Level Reference Monitor for File Protection, developed for Linux by using kernel modules. 
 
-## Black List
+## Project specification
+This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:
+OFF, meaning that its operations are currently disabled;
+ON, meaning that its operations are currently enabled;
+REC-ON/REC-OFF, meaning that it can be currently reconfigured (in either ON or OFF mode).
+The configuration of the reference monitor is based on a set of file system paths. Each path corresponds to a file/dir that cannot be currently opened in write mode. Hence, any attempt to write-open the path needs to return an error, independently of the user-id that attempts the open operation.
 
-### Inode
-To check and block the different interaction with blacklisted file the inode number of the file/directory is saved inside the monitor. Especially, the monitor mantains protected path inside a *list_head* structure and each entry of this list is composed like: 
+Reconfiguring the reference monitor means that some path to be protected can be added/removed. In any case, changing the current state of the reference monitor requires that the thread that is running this operation needs to be marked with effective-user-id set to root, and additionally the reconfiguration requires in input a password that is reference-monitor specific. This means that the encrypted version of the password is maintained at the level of the reference monitor architecture for performing the required checks.
+
+It is up to the software designer to determine if the above states ON/OFF/REC-ON/REC-OFF can be changed via VFS API or via specific system-calls. The same is true for the services that implement each reconfiguration step (addition/deletion of paths to be checked). Together with kernel level stuff, the project should also deliver user space code/commands for invoking the system level API with correct parameters.
+
+In addition to the above specifics, the project should also include the realization of a file system where a single append-only file should record the following tuple of data (per line of the file) each time an attempt to write-open a protected file system path is attempted:
+
+the process TGID
+the thread ID
+the user-id
+the effective user-id
+the program path-name that is currently attempting the open
+a cryptographic hash of the program file content
+
+The the computation of the cryptographic hash and the writing of the above tuple should be carried in deferred work.
+
+## Black List (Monitor)
+The initial aspect is the structure of the monitor.
+
+### Structure 
+To check and block various interactions with blacklisted files, the inode number of the file/directory is saved within the monitor. Specifically, the monitor maintains protected paths within a list_head structure, and each entry in this list is composed as follows:
 
 ``` 
 struct protected_path{
@@ -14,7 +37,7 @@ struct protected_path{
 };
 ``` 
 
-The monitor mantains also the password to work with him, it is defined in this way: 
+Additionally, the monitor stores the password required for its operation, defined as follows:
 
 ``` 
 struct reference_monitor {
@@ -25,95 +48,117 @@ struct reference_monitor {
 };
 ``` 
 
-The spinlock is used for the operation that will change the list of protected paths.
+The spinlock is used for operations that modify the list of protected paths.
 
+The monitor is shared among various modules of the project through the use of:
+
+``` 
+extern struct reference_monitor* monitor;
+``` 
+
+Specifically, Kretprobes, LinuxSCTFinder, and Monitor interact with the same instance of the *"struct reference_monitor"*.
 
 
 ### Adding Paths
-When trying to add a path , if it is a file, it is simply added to the blacklist. However, if it is a directory, there are two possibilities: 
-1) All the files and subdirectories within it will be blacklisted as well.
-2) Only the directory is blacklisted.
+When attempting to add a path:
+
+- If it's a file, it's straightforwardly added to the blacklist.
+- If it's a directory, two scenarios arise:
+    1) All files and subdirectories within the directory are also blacklisted.
+    2) Only the directory itself is blacklisted.
 
 ### Removing Paths
-When removing there are only two possibilities:
-1) Remove one specific path.
-2) Remove all the paths inside the monitor.
+When removing paths:
+1) You can either remove a specific path.
+2) Alternatively, you can remove all paths stored within the monitor.
 
 ### Hard Link
-Since files and directories are stored in the monitor with their inode numbers, hard links do not pose a problem because they share the same inode number of the original file. Therefore, it is possible to create hard links to protected files (which is not possible by default for directories), but these hard links do not influence the original file in any way.
+Since files and directories are stored in the monitor using their inode numbers, hard links pose no issue because they share the same inode number as the original file. Therefore, creating hard links to protected files (which is not possible by default for directories) is feasible, but these hard links do not affect the original file in any way.
 
-### Soft Link
-When access to the original file of a symbolic link is blocked, it effectively prevents access to all the symlinks pointing to that file. Since symlinks are merely pointers to the original file, if access to the original file is blocked, following the symlink to access the file content becomes impossible. Consequently, any attempt to access via a blocked symlink will be disrupted.
+### Symbolic Links (Soft Link)
+Blocking access to the original file of a symbolic link effectively prevents access to all symlinks pointing to that file. Since symlinks act as pointers to the original file, blocking access to the original file makes it impossible to follow the symlink to access the file's content. Consequently, any attempt to access via a blocked symlink will be unsuccessful.
 
 
-## Available System Calls
-This solution introduces 5 system call to work with the monitor.
+## Available System Calls (LinuxSCTFinder)
+This solution introduces 5 system calls to interact with the monitor.
 
 ### 134 - sys_state_update(char* state, char * password)
-This system call checks if the user that requested has EUID = 0, verify that password is the right one and then try to change the monitor state. 
-It has two input arguments:
-- *state* the new wanted state 
-- *password* the monitor password.
+This system call checks if the requesting user has an effective UID (EUID) of 0, verifies the correctness of the password, and attempts to change the monitor's state. It takes two input arguments:
+
+- *state*: the desired new state. 
+- *password*: the monitor password.
 
 ### 174 - sys_configure_path(char* path ,char* password, int mod, int recursive)
-This system call is a bit more complex. It can be used to add and also to remove path. 
-The *path* is the one that want to be added/removed and *password* is needed to work with monitor. 
-About the other two arguments: 
-- *mod* specify wich operation must be done: 0 for add 1 for remove.
-- *recursive* is used only during the add modality. It permits to insert all the subdir and file in a specific path, included the path at hand. 
+This system call is more complex and can be used to add or remove paths. The path parameter specifies the path to be added or removed, and the password is required to interact with the monitor.
+Regarding the other two arguments:
+- *mod*: specifies the operation to be performed (0 for add, 1 for remove).
+- *recursive*: used only during the "add" operation, allowing insertion of all subdirectories and files within the specified path, including the path itself.
 
 ### 182 - sys_print_paths(char* output, size_t output_size)
-This system call is helpful espacially for the client. It returns all the blacklisted paths.
-- *output* is the buffer that will contain the list of paths.
-- *output_size* is the max size of the buffer, used to avoid some overflow.
+This system call is particularly useful for the client as it returns a list of all blacklisted paths.
+- *output*: a buffer that will contain the list of paths..
+- *output_size*: the maximum size of the buffer, used to prevent overflow issues.
 
 ### 183 - sys_remove_all_paths(char* password)
-This system call simply get the password of the monitor and then remove all the black listed path. 
-It may be useful when to many paths are inside the monitor and removing them one by one is to slow.
+This system call simply receives the monitor's password and then removes all blacklisted paths. 
+It can be useful when there are too many paths stored in the monitor, and removing them individually is too slow.
 
 ### 214 - sys_get_state(char* state)
-This is the last system call implemented. It is used only by the client to get the current state of the monitor
-- *state* is the buffer that will contain the current state.
-
+This is the final implemented system call, used exclusively by the client to retrieve the current state of the monitor.
+- *state*: the buffer that will contain the current state.
 
 ###  User: The Client
-The user can interact directly with the monitor by using a client. This client show a menu where the possible operations are exposed. 
-All the interaction between user and kernel happen by using reference monitor systemcalls.
+Users can interact directly with the monitor using a client application. The client presents a menu exposing various operations. All interactions between the user and the kernel occur through reference monitor system calls.
 
 
 ## Monitored Function (Kretprobes)
+The objective is to block write-open operations on directories and files by monitoring and potentially blocking various functions when they interact with blacklisted paths.
+
 ### Open
-The systemcalls **sys_open** and **sys_openat** relies on other low level API, see it from "https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1423". In particular, **vfs_open** is a low level function used when open is called and is the one that is kprobed. 
-For the documentation: "https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1084". 
+The systemcalls **sys_open** and **sys_openat** relies on other low level API, see it from [here](https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1423). In particular, **vfs_open** is a low level function used when open is called and is the one that is kprobed. 
+
+For the documentation: [this link](https://elixir.bootlin.com/linux/latest/source/fs/open.c#L1084). 
 
 ### Unlink
-The systemcalls **sys_unlink** and **sys_unlinkat** relies on other low level API. Both of them call inside **security_path_unlink**. This API checks if the permission to remove link are granted, documentation on: "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1848". 
+The systemcalls **sys_unlink** and **sys_unlinkat** relies on other low level API. Both of these calls internally **security_path_unlink** which checks for permission to remove the link. This API checks if the permission to remove link are granted.
+
+Documentation is available [here]("https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1848). 
 
 ### Rmdir
-The systemcalls **sys_rmdir** relies on other low level API. Also here there is an API that check permission **security_path_rmdir**, see it from "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1832"
+The systemcalls **sys_rmdir** relies on other low level API. Here too, there is an API that checks permissions named **security_path_rmdir**.  
+
+Refer to the documentation [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1832).
 
 ### Rename
-The systemcalls **sys_rename** and **sys_renameat** relies on other low level API. Also here there is an API that check permission **security_path_rename**, for the documentation: "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1904"
+The systemcalls **sys_rename** and **sys_renameat** relies on other low level API.  Similar to unlink, there is an API named security_path_rename that checks permissions. 
+
+Documentation can be found  [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1904).
 
 ### Mkdir
-The systemcalls **sys_mkdir** and **sys_mkdirat** relies on other low level API. Also here there is an API that check permission **security_path_mkdir**, for the documentation: "https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1814"
+The systemcalls **sys_mkdir** and **sys_mkdirat** relies on other low level API.  Like unlink and rename, there is an API named **security_path_mkdir** for permission checking. 
+
+Documentation is available [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1814).
 
 ### Creation
-Also file creation is monitored, in this case by intercepting  **security_inode_create**. 
-For the documentation: "https://elixir.bootlin.com/linux/latest/source/security/security.c#L1994". 
+File creation is also monitored by intercepting **security_inode_create**. 
+
+For the documentation refer to this link: [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1994). 
 
 ### Symlink (Not Mandatory)
-The user level system call **sys_symlink** and **sys_symlinkat** relies on other low level API. Also here there is an API that check permission **security_path_symlink**, for the documentation: "https://elixir.bootlin.com/linux/latest/source/security/security.c#L1866".
+The systemcalls **sys_symlink** and **sys_symlinkat** relies on other low level API. Similarly, there is an API named **security_path_symlink** for permission checking.  
+Documentation can be found : [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1866).
 
 ### Link (Not Mandatory)
-The user level system call **link** and **linkat** relies on other low level API. Also here there is an API that check permission **security_inode_link**, for the documentation: "https://elixir.bootlin.com/linux/latest/source/security/security.c#L2019". 
+The systemcalls **link** and **linkat** relies on other low level API. ASimilar to symlink, there is an API named **security_inode_link** for permission checking. 
+
+For documentation [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L2019). 
 
 
 ### Pre Handler
-The choice of the functio to monitor was made by following two key ideas:
-1) Try to intercept the most simple function.
-2) Intercept a function that exposes the inode of the file/dir.
-In particular the second point is basic beacause almost all the check in the black list happen by inode, only often in some particular cases happen by explicit path due to the overhead needed to get the absolute path.
+The selection of functions to monitor was based on two key ideas:
+1) Intercepting the simplest functions.
+2) Intercepting functions that expose the inode of the file/directory.
+The second point is crucial because most checks in the blacklist rely on filtering by inode number. Only symlink checks use the path due to the nature of the function that exposes the original file's path. Directly working with inode numbers avoid the overhead needed to obtain the absolute path of the file/directory.
 
 ```
 int inode_in_protected_paths(long unsigned int inode_number){
@@ -132,16 +177,25 @@ int inode_in_protected_paths(long unsigned int inode_number){
 }
 ```
 
-After obtain the inode and check if is present in the blacklist, all the different pre handler simply:
-- If the path is present then return 0 (*run also the post handler*) 
-- If the path isn't present then return 1 (*doesn't run the post handler*)
+After obtaining the inode and checking if it is present in the blacklist, all the different pre-handlers simply:
+- Return 0 if the path is present (also triggers the post-handler).
+- Return 1 if the path is not present (does not trigger the post-handler).
 
 ### Post Handler
-The post handler are essentially all similar togheter. They put in rax the -1 value or a different error code that prevents the execution of the specific operation. As specified before the post handler is runned only when the execution must be blocked (*blacklisted path*)
-## Log Data
+The post-handlers are essentially similar in nature. They set rax to -1 or a different error code to prevent the execution of the specific operation. As mentioned earlier, the post-handler is executed only when the execution needs to be blocked (for blacklisted paths).
 
-### Singlefs
-The log file is located into a custom file system that contains only one file (the log). The open, read and write operation are custom and specific for that file system. In particular the write function allows only the append mode, so the data are written at the end of the file. The file is composed by an header that shows the contents and each row represent an attempted access to black listed file/dir with specific information like: 
+```
+static int link_post_handler(struct kretprobe_instance *p, struct pt_regs *the_regs){
+    the_regs->ax = -1;
+    return 0;
+}
+```
+
+
+## Log Data (singlefile-FS)
+
+### File system
+The log file is located within a custom file system that consists of only one file (the log). Customized open, read, and write operations are specific to this file system. Notably, the write function permits only append mode, ensuring that data is added at the end of the file. The file structure includes a header detailing its contents, with each row representing an attempted access to blacklisted files/directories and containing specific information such as:
 
 - the process TGID
 - the thread ID
@@ -150,7 +204,7 @@ The log file is located into a custom file system that contains only one file (t
 - the program path-name that is currently attempting the open
 - cryptographic hash of the program file content.
 
-In particular, to able the kernel to write inside the log file is been implemented write_iter file operation and not implemented the simple write, as documentation says: 
+To enable the kernel to write to the log file, the write_iter file operation has been implemented instead of the simple write operation. As per the documentation:
 
 ``` 
 /* caller is responsible for file_start_write/file_end_write */
@@ -166,7 +220,7 @@ ssize_t __kernel_write_iter(struct file *file, struct iov_iter *from, loff_t *po
 
 
 ### Defered Work
-The hash evaluation of the file program path that has accessed a blacklisted file/dir and the write on the log file is done in defered work. The write must be executed after the hash evalutation, so it waits the completition and after that is issued. 
+The hash evaluation of the program file path that has accessed a blacklisted file/directory and the subsequent write operation to the log file are performed using deferred work. The write must be executed after the hash evaluation is complete, so it waits for the completion signal before proceeding with the logging.
 
 ``` 
 struct packed_work{
@@ -198,8 +252,23 @@ static void write_log_work_function(struct work_struct *work) {
     write_log_entry(entry);
 }
 ``` 
-The struct *work_struct* for get_log and write_log is manteined inside a custom struct **packed_work**, this permits to notify the completition to the write_log.
+The struct *work_struct* for *get_log_work* and *write_log_work* is maintained within a custom struct packed_work. This structure allows for signaling the completion of *get_log_work* to trigger the subsequent *write_log_work* operation.
 
+## Conclusion
 
+In this project, we have implemented a comprehensive monitoring system within the Linux kernel to enforce security policies related to file and directory access. The core components include a reference monitor module that maintains a list of protected paths and controls the system's state. Interaction with the monitor is facilitated through a set of custom system calls introduced by the LinuxSCTFinder module.
 
+Key functionalities of the system include:
+
+- Blacklisting Paths: Users can add, remove, or query blacklisted paths using system calls, allowing for flexible management of security policies.
+
+- Monitoring Functions: Critical kernel functions like open, unlink, rmdir, rename, mkdir, and file creation are intercepted and monitored to enforce access restrictions based on protected paths.
+
+- Log File System: A custom file system hosts a single log file, recording attempted accesses to blacklisted files/directories. The log entries capture detailed information such as process IDs, user IDs, and program paths for auditing purposes.
+
+- Deferred Work Mechanism: Hash evaluation of program file paths and subsequent logging operations are handled asynchronously using deferred work. This ensures that logging occurs after the completion of hash evaluations.
+
+Overall, the project demonstrates effective integration of kernel-level monitoring techniques to enhance system security and enforce access controls based on predefined security policies.
+
+This conclusion summarizes the key aspects and achievements of your project, highlighting the implementation of a robust security monitoring system within the Linux kernel. Feel free to adjust or expand upon this conclusion based on additional details or insights from your report. If you have any specific points you'd like to emphasize or include, please let me know!
 

@@ -1,14 +1,5 @@
  N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
 
-- Sistema il path relativo con cui si accede al file di log.
+- Controlla che tutta la specifica sia rispettata e tutto il codice.
 
-- Fai dei make file più decenti
-
-- Controlla che tutta la specifica sia rispettata
-
-- Nella documentazione specifca come funzionano le system call ed il loro paraemtri
-
-- Se monitor offline blocca il client.
-
-- Cerca di capire perché si bugga nella rimozione dei moduli e nel blacklisting di /home/xave.
 
