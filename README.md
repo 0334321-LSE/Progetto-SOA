@@ -122,22 +122,22 @@ For documentation: [this link](https://elixir.bootlin.com/linux/latest/source/fs
 ### Unlink
 The systemcalls **sys_unlink** and **sys_unlinkat** relies on other low level API. Both of these calls internally **security_path_unlink** which checks for permission to remove the link. This API checks if the permission to remove link are granted.
 
-Documentation is available [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1848). 
+Documentation is available [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1848). 
 
 ### Rmdir
 The systemcalls **sys_rmdir** relies on other low level API. Here too, there is an API that checks permissions named **security_path_rmdir**.  
 
-Refer to the documentation [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1832).
+Refer to the documentation [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1832).
 
 ### Rename
 The systemcalls **sys_rename** and **sys_renameat** relies on other low level API.  Similar to unlink, there is an API named security_path_rename that checks permissions. 
 
-Documentation can be found  [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1904).
+Documentation can be found  [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1904).
 
 ### Mkdir
 The systemcalls **sys_mkdir** and **sys_mkdirat** relies on other low level API.  Like unlink and rename, there is an API named **security_path_mkdir** for permission checking. 
 
-Documentation is available [here](https://elixir.bootlin.com/linux/6.8/source/security/security.c#L1814).
+Documentation is available [here](https://elixir.bootlin.com/linux/latest/source/security/security.c#L1814).
 
 ### Creation
 File creation is also monitored by intercepting **security_inode_create**. 
