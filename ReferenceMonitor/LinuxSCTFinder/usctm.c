@@ -403,13 +403,13 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 
 			// Check if there is enough space to concatenate the current path
 			if (remaining_space < PATH_MAX + 10) { // Add a safety margin for the path and formatting
-				printk(KERN_WARNING "Output buffer size too small to hold all paths\n");
+				printk("%s: Output buffer size too small to hold all paths\n", MODNAME);
 				ret = -ENOSPC; 
 				goto exit;
 			}
 			// Concatenate the current path into the output buffer
 			if ((chars_written = snprintf(output + strlen(output), remaining_space,"\n|Path %d: %s", i, entry->path_name)) < 0) {
-				printk(KERN_WARNING "Failed to concatenate path %d\n", i );
+				printk("%s: Failed to concatenate path %d\n", MODNAME,i );
 				ret = -EFAULT; 
 				goto exit;
 			}

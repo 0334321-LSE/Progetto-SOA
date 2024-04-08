@@ -25,7 +25,7 @@
 
 MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
 MODULE_DESCRIPTION("The module install kretprobe on different functions (see below) \
-and check if black-listed path are touched by this function, in that case: block the access and report informatio to a log file. \
+and check if black-listed path are touched by this function. In that case: block the access and report information into a log file. \
 PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the specific system call calling convention of this architectures.");
 
 #define open_func "vfs_open"
@@ -117,7 +117,11 @@ static void schedule_defered_work(char * cmd){
     schedule_work(&the_task->write_log_work);
 }
 
-// Usefull for debugging
+/**
+ * @brief Print the opening flags, used for debugging.
+ * 
+ * @param flags 
+ */
 void print_flag(int flags){
 // Stampa le flags di apertura del file
     if (flags & O_RDONLY)
@@ -132,6 +136,11 @@ void print_flag(int flags){
         printk("%s: Flags O_TRUNC \n", MODNAME);
 }
 
+
+/**
+ * @brief Register hook (kretprobe) on a specific function.
+ * 
+ */
 int register_hook(struct kretprobe *the_probe, char * the_func){
     int ret;
     ret = register_kretprobe(the_probe);
@@ -583,7 +592,6 @@ static int hook_init(void) {
 
     return 0;
 }
-
 
 
 static void  hook_exit(void) {

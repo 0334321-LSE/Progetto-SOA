@@ -1,8 +1,38 @@
 #include "reference_monitor.h"
 
+
 #if  LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+/**
+ * @brief Iterate over a directory. For each file/dir inside, 
+ * composes the full path and add to the monitor.
+ * @see int add_file(char* modname, const char* path) Handler to add file
+ * @see int add_dir(char* modname, const char* path) Handler to add dir
+ * 
+ * @param ctx 
+ * @param name 
+ * @param type 
+ * @param offset 
+ * @param ino 
+ * @param d_type 
+ * @return true 
+ * @return false 
+ */
 static bool add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
 #else
+/**
+ * @brief Iterate over a directory. For each file/dir inside, 
+ * composes the full path and add to the monitor.
+ * @see int add_file(char* modname, const char* path) Handler to add file
+ * @see int add_dir(char* modname, const char* path) Handler to add dir
+ * 
+ * @param ctx 
+ * @param name 
+ * @param type 
+ * @param offset 
+ * @param ino 
+ * @param d_type 
+ * @return int 
+ */
 static int add_entry_actor(struct dir_context *ctx, const char *name, int type, loff_t offset, u64 ino, unsigned d_type);
 #endif
 
@@ -12,15 +42,22 @@ int calculate_sha256(const char *input, size_t input_len, char *output);
 // Just for debugging 
 void print_log_entry(struct log_entry *entry);
 
+
+/**
+ * @brief Get file path and check if the file is a directory
+ * 
+ * @param path 
+ * @return int 
+ */
 int is_directory(const char *path) {
     struct path p;
     int ret = 0;
 
-    // Prende la dentry del percorso
+    // Get path dentry
     if (kern_path(path, 0, &p) == 0) {
-        // Verifica se è una directory
+        // Verify if is a directory
         if (S_ISDIR(p.dentry->d_inode->i_mode)) {
-            ret = 1; // Sì, è una directory
+            ret = 1; 
         }
         path_put(&p);
     }
@@ -28,10 +65,18 @@ int is_directory(const char *path) {
     return ret; // No, non è una directory
 }
 
+/**
+ * @brief Takes a path and add it to the monitor 
+ * 
+ * @param modname Prints better
+ * @param path The path to add inside the monitor 
+ * @return int 
+ */
 int add_file(char* modname, const char* path){
     struct protected_path *entry;
     int ret = 0;
-    // kmalloc one protected path
+
+    // kmalloc protected path
     entry = kmalloc(sizeof(struct protected_path), GFP_KERNEL);
     if (!entry) {
         printk("%s: Entry can't be allocated \n",modname);
@@ -68,6 +113,14 @@ end:
     return ret;
 }
 
+/**
+ * @brief Takes a path of a dir, setup the context 
+ * and iterate over the dir to add all the files and subdirs inside it.
+ * 
+ * @param modname 
+ * @param path 
+ * @return int 
+ */
 int add_dir(char* modname, const char* path){
 
     struct file *dir;
@@ -75,7 +128,7 @@ int add_dir(char* modname, const char* path){
 
     context.dir_ctx.actor = &add_entry_actor;
     // Assegnated in this way to avoid stupid warning 
-    /*
+
     context.dir_path = kstrdup(path, GFP_KERNEL);
     
     if(!context.dir_path){
@@ -87,11 +140,9 @@ int add_dir(char* modname, const char* path){
         printk("%s Error during context creation ",modname);
         return -ENOMEM;
     }
-    */
-    context.dir_path = path;
-    context.modname = modname;
 
     // printk("%s: Path %s is a dir \n", modname, dir_path);
+
     // Open
     dir = filp_open(path, O_RDONLY, 0);
     if (IS_ERR(dir)) {
@@ -214,8 +265,8 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
     }
 
 	// Build full path by using parent directory path passed to iterate_dir and current filename:
-    // 1 Copy the path of parent dir and leave the space to append file name
-        
+
+    // 1 Copy the path of parent dir and leave the space to append file name 
         full_path = kmalloc(PATH_MAX, GFP_KERNEL);
         if (!full_path){
             printk("%s: Can't alloc memory for full path \n",modname);
@@ -227,35 +278,24 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
         strcpy(full_path, my_ctx->dir_path);
         
     // 2 Add the file/directory name to this path
-         file_name = kstrdup(name, GFP_KERNEL);
+        file_name = kstrdup(name, GFP_KERNEL);
         if (!file_name) {
             printk("%s: Can't alloc memory for file/dir name)\n", modname);
             ret = -ENOMEM;
             goto free_fullpath;
         }
 
-        /* file_name = kmalloc(strlen(name)+1, GFP_KERNEL);
-        if (!file_name) {
-                printk("%s: kmalloc allocation error (process_dir_entry)\n", modname);
-                ret = -ENOMEM;
-                goto free_fullpath;
-        }
-
-        strcpy(file_name, name);
-        file_name[strlen(name)] = '\0'; 
-        */
-
-
 	// exclude current and parent directories 
         if (strcmp(file_name, ".") && strcmp(file_name, "..")) {
-        // reconstruct file/subdirectory path  
+        
+        // Avoid some broken cases
         if (full_path[0] != '\0')
             last_char = (full_path[strlen(full_path)-1]);
         
         //printk("%s: Adding filename: %s \n",modname,file_name);
         //printk("%s: Last char of %s: %c",modname,full_path,last_char);
         
-        // add the "/"" to the end if the parent dir path doesn't include it
+        // Append the "/" to fullpath
         if( last_char != '/'){
             if(strlcat(full_path, "/", PATH_MAX) >= PATH_MAX){
                 printk("%s Failed to append slash to directory path\n",modname);
@@ -263,7 +303,8 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
                 goto free_filename;
             }
         }
-        // then add the dir/file name
+
+        // Append the dir/file name
         if(strlcat(full_path, file_name, PATH_MAX) >= PATH_MAX){
             printk("%s Failed to concatenate file name to directory path\n",modname);
             ret =  -ENOMEM;
@@ -271,12 +312,13 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
         }
 
         //printk("%s: Adding full path: %s \n",modname,full_path);
-        if (d_type == DT_DIR) {         /* subdirectory */
+        
+        if (d_type == DT_DIR) {         /* It's a directory */
     
             struct file *subdir = filp_open(full_path, O_RDONLY, 0);
             
             if (IS_ERR(subdir)) {
-                    printk("%s: error during file opening %s\n", modname, full_path);
+                    printk("%s: Error during file opening %s\n", modname, full_path);
                     ret = PTR_ERR(subdir);
                     goto free_filename;
             }
@@ -299,6 +341,7 @@ free_modname:
     return ret;
 }
 #endif
+
 
 int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
@@ -389,21 +432,37 @@ int parent_is_blacklisted(const struct dentry* dentry){
     }
 }
 
+/**
+ * @brief Get the path from dentry object.
+ * 
+ * @param dentry 
+ * @return char* 
+ */
 char *get_path_from_dentry(struct dentry *dentry) {
-        char *full_path;
+        char *full_path; 
         char *buffer = (char *)__get_free_page(GFP_KERNEL);
         if (!buffer)
-                return NULL;
+            return "";
 
         full_path = dentry_path_raw(dentry, buffer, PATH_MAX);
         if (IS_ERR(full_path)) {
-                printk("Can't find full path: %li", PTR_ERR(full_path));
+            printk("Can't find full path: %li", PTR_ERR(full_path));
+            free_page((unsigned long)buffer);
+            return "";
         } 
+
         free_page((unsigned long)buffer);
 
         return full_path;
 }
 
+/**
+ * @brief Gets the log information and writes them into log_entry
+ * 
+ * @param entry 
+ * @param cmd Specifies the command used on the blacklisted file/dir
+ * @return int 
+ */
 int get_log_info(struct log_entry * entry, char* cmd){
     
     strncpy(entry->cmd, cmd, CMD_SIZE); // Executed CMD
@@ -415,50 +474,87 @@ int get_log_info(struct log_entry * entry, char* cmd){
     return 0;
 }
 
-int get_path_and_hash(struct log_entry *entry){
-    char * hash = kmalloc(HASH_MAX_DIGESTSIZE , GFP_ATOMIC);
+
+/**
+ * @brief Get the path and the hash of the program that touch blacklisted file/dir. 
+ * 
+ * @param entry 
+ * @return int 
+ */
+int get_path_and_hash(struct log_entry *entry) {
+    char *path;
+    char *hash = NULL;
+    int ret = -1;
 
     if (entry->exe_dentry != NULL) {
-        
-        if (strncpy(entry->program_path,get_path_from_dentry(entry->exe_dentry), PATH_MAX) == NULL ){
-                printk("Cant' find exe path for: %s\n",entry->exe_dentry->d_name.name);
-                return -1;
+        // Retrieve path from exe_dentry
+        path = get_path_from_dentry(entry->exe_dentry);
+
+        if (!path || path[0] == '\0') {
+            printk("Can't find exe path for: %s\n", entry->exe_dentry->d_name.name);
+            ret = -1;
+            goto cleanup; // Jump to cleanup and return error
         }
 
-    } 
-    else {
-        printk("Cant' find exe path, dentry doesn't exists\n");
-        kfree(hash);
-        return -1;
+        // Copy path to program_path
+        strncpy(entry->program_path, path, PATH_MAX);
+    } else {
+        printk("Can't find exe path, dentry doesn't exist\n");
+        ret = -1;
+        goto cleanup; // Jump to cleanup and return error
     }
 
-    if (! calculate_sha256(entry->program_path, strlen(entry->program_path), hash))
-        strncpy(entry->file_content_hash,hash,HASH_SIZE);
-    else{
-        printk("Cant' evaluate hash\n");
-        kfree(hash);
-        return -1;
+    // Allocate memory for hash
+    hash = kmalloc(HASH_MAX_DIGESTSIZE, GFP_ATOMIC);
+    if (!hash) {
+        printk("Failed to allocate memory for hash\n");
+        ret = -1;
+        goto cleanup; // Jump to cleanup and return error
     }
 
-    kfree(hash);
-    return 0;
+    // Calculate hash and copy to file_content_hash
+    if (!calculate_sha256(entry->program_path, strlen(entry->program_path), hash)) {
+        strncpy(entry->file_content_hash, hash, HASH_SIZE);
+        ret = 0; // Success
+    } else {
+        printk("Failed to calculate hash\n");
+        ret = -1;
+    }
+
+
+    // Free allocated memory before returning
+    if (hash)
+        kfree(hash);
+        
+cleanup:
+    return ret;
 }
 
-// Evaluate SHA256 and return the result. Used only to get the password to configure monitor.
+/**
+ * @brief Evaluate SHA256 and return the result. Used only to get the password to configure monitor.
+ * 
+ * @param pasw 
+ * @return * char* 
+ */
 char * get_sha(char* pasw){
     char* hash = kmalloc(PASW_MAX_LENGTH, GFP_KERNEL);
     calculate_sha256(pasw,strlen(pasw), hash);
     return hash;
 }
 
-// Function to calculate the SHA-256 hash of a string
-// Parameters:
-// - input: Pointer to the input data
-// - input_len: Length of the input data
-// - output: Pointer to the buffer where the hash will be stored (must be at least 65 bytes long)
-// Returns:
-// - 0 if the hash calculation is successful
-// - Error code (< 0) if the hash calculation fails
+/**
+ * @brief Function to calculate the SHA-256 hash.
+ *
+ * This function calculates the SHA-256 hash of the input data and stores the result
+ * in the specified output buffer.
+ *
+ * @param input Pointer to the input data.
+ * @param input_len Length of the input data.
+ * @param output Pointer to the buffer where the hash will be stored (must be at least 65 bytes long).
+ * @return
+ *    - 0 if the hash calculation is successful.
+ *    - Error code (< 0) if the hash calculation fails.
+ */
 int calculate_sha256(const char *input, size_t input_len, char *output) {
     struct crypto_shash *tfm;
     struct shash_desc *desc;
@@ -528,7 +624,12 @@ free_hash:
 }
 
 
-// Function to write log entry to file
+/**
+ * @brief Write the entry inside the log file.
+ * 
+ * @param entry 
+ * @return int 
+ */
 int write_log_entry(struct log_entry* entry) {
     struct file *log_file;
     ssize_t ret = -1;
@@ -537,7 +638,7 @@ int write_log_entry(struct log_entry* entry) {
     // Just for debug
     //print_log_entry(entry);
 
-    // Open the log file in append mode
+    // Open log file
     log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
     if (IS_ERR(log_file)) {
         int err = PTR_ERR(log_file);
@@ -568,7 +669,11 @@ cleanup:
 }
 
 
-// Just for debugging
+/**
+ * @brief Just a debugging function, it prints the various entry to the log.
+ * 
+ * @param entry 
+ */
 void print_log_entry(struct log_entry *entry) {
     if (!entry) {
         printk(KERN_ERR "Entry pointer is NULL\n");
