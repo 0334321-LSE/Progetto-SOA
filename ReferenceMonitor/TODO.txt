@@ -1,6 +1,0 @@
- N.B. Le kprobe sono eseguite in un contesto non preemtable quindi non puoi usare servizi bloccanti.
-
-- Fix the warning when make all
-- Controlla che tutta la specifica sia rispettata e tutto il codice.
-
-
