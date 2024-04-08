@@ -9,6 +9,13 @@ the_usctm-objs := /LinuxSCTFinder/usctm.o /LinuxSCTFinder/lib/vtpmo.o reference_
 the_retprobe-objs := /Kretprobes/retprobe_module.o reference_monitor.o 
 #singlefilefs-objs += /singlefile-FS/singlefilefs_src.o /singlefile-FS/file.o /singlefile-FS/dir.o
 
+ifdef SYMLINK
+    ccflags-y += -DSYMLINK
+endif
+
+ifdef LINK
+    ccflags-y += -DLINK
+endif
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

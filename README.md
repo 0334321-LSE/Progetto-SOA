@@ -1,6 +1,14 @@
 # SOA 23-24 Project - Reference Monitor
 This is a Kernel Level Reference Monitor for File Protection, developed for Linux by using kernel modules. 
 
+## Launch the project
+Here the command to build and launch the project with all its feature: 
+
+```
+make SYMLINK=1 LINK=1 all
+make install 
+```
+
 ## Project specification
 This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:
 OFF, meaning that its operations are currently disabled;

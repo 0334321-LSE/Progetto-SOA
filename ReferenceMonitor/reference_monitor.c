@@ -476,57 +476,77 @@ int get_log_info(struct log_entry * entry, char* cmd){
 
 
 /**
- * @brief Get the path and the hash of the program that touch blacklisted file/dir. 
+ * @brief Get the path and the hash of the program content that touch blacklisted file/dir. 
  * 
  * @param entry 
  * @return int 
  */
 int get_path_and_hash(struct log_entry *entry) {
     char *path;
-    char *hash = NULL;
+    struct file *file;
+    char *file_content;
+    int file_size;
     int ret = -1;
 
-    if (entry->exe_dentry != NULL) {
-        // Retrieve path from exe_dentry
-        path = get_path_from_dentry(entry->exe_dentry);
-
-        if (!path || path[0] == '\0') {
-            printk("Can't find exe path for: %s\n", entry->exe_dentry->d_name.name);
-            ret = -1;
-            goto cleanup; // Jump to cleanup and return error
-        }
-
-        // Copy path to program_path
-        strncpy(entry->program_path, path, PATH_MAX);
-    } else {
-        printk("Can't find exe path, dentry doesn't exist\n");
-        ret = -1;
-        goto cleanup; // Jump to cleanup and return error
+    // Retrieve path from exe_dentry
+    path = get_path_from_dentry(entry->exe_dentry);
+    if (!path || path[0] == '\0') {
+        printk("Can't find exe path for: %s\n", entry->exe_dentry->d_name.name);
+        return -EINVAL;
     }
 
-    // Allocate memory for hash
-    hash = kmalloc(HASH_MAX_DIGESTSIZE, GFP_ATOMIC);
-    if (!hash) {
-        printk("Failed to allocate memory for hash\n");
-        ret = -1;
-        goto cleanup; // Jump to cleanup and return error
+    // Copy path to program_path
+    strncpy(entry->program_path, path, PATH_MAX);
+
+    // Open the file for reading
+    file = filp_open(path, O_RDONLY, 0);
+    if (!file || IS_ERR(file)) {
+        printk("Failed to open file: %s\n", path);
+        ret = -ENOENT;
+        goto cleanup;
     }
 
-    // Calculate hash and copy to file_content_hash
-    if (!calculate_sha256(entry->program_path, strlen(entry->program_path), hash)) {
-        strncpy(entry->file_content_hash, hash, HASH_SIZE);
-        ret = 0; // Success
-    } else {
-        printk("Failed to calculate hash\n");
-        ret = -1;
+    // Get the file size
+    file_size = i_size_read(file_inode(file));
+    if (file_size <= 0) {
+        printk("Invalid file size\n");
+        ret = -EINVAL;
+        goto close_file;
     }
 
+    // Allocate memory for file content
+    file_content = kmalloc(file_size, GFP_KERNEL);
+    if (!file_content) {
+        printk( "Failed to allocate memory for file content\n");
+        ret = -ENOMEM;
+        goto close_file;
+    }
 
-    // Free allocated memory before returning
-    if (hash)
-        kfree(hash);
-        
+    // Read file content into buffer
+    ret = kernel_read(file, file_content, file_size, &file->f_pos);
+    if (ret < 0) {
+        printk("Failed to read file content\n");
+        goto free_memory;
+    }
+
+    // Calculate SHA-256 hash of file content
+    ret = calculate_sha256(file_content, file_size, entry->file_content_hash);
+    if (ret < 0) {
+        printk(KERN_ERR "Failed to calculate SHA-256 hash\n");
+        goto free_memory;
+    }
+
+    // Set return value on success
+    ret = 0;
+
+free_memory:
+    kfree(file_content);
+
+close_file:
+    filp_close(file, NULL);
+
 cleanup:
+    kfree(path);
     return ret;
 }
 

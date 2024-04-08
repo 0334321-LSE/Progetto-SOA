@@ -40,8 +40,8 @@ PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the s
 
 #define create_func "security_inode_create"
 
-#define SYMLINK
-#define LINK
+//#define SYMLINK
+//#define LINK
 
 #ifdef SYMLINK
     #define symlink_func "security_path_symlink"
@@ -623,8 +623,8 @@ static void  hook_exit(void) {
     #ifdef SYMLINK
         printk("%s: %s hook invoked %lu times\n",MODNAME, symlink_func ,symlink_audit_counter);
     #endif
-    #ifdef SYMLINK
-        printk("%s: %s hook invoked %lu times\n",MODNAME, symlink_func ,link_audit_counter);
+    #ifdef LINK
+        printk("%s: %s hook invoked %lu times\n",MODNAME, link_func ,link_audit_counter);
     #endif
 
     printk("%s: Kretprobes unregistered\n",MODNAME);
