@@ -4,7 +4,7 @@ obj-m += the_usctm.o
 obj-m += the_retprobe.o
 #obj-m += singlefilefs.o
 
-the_rm-objs := /Monitor/rm_module.o
+the_rm-objs := /Monitor/rm_module.o reference_monitor.o
 the_usctm-objs := /LinuxSCTFinder/usctm.o /LinuxSCTFinder/lib/vtpmo.o reference_monitor.o
 the_retprobe-objs := /Kretprobes/retprobe_module.o reference_monitor.o 
 #singlefilefs-objs += /singlefile-FS/singlefilefs_src.o /singlefile-FS/file.o /singlefile-FS/dir.o
@@ -28,13 +28,15 @@ clean:
 	make -C $(PWD)/singlefile-FS clean
 
 
-install :
-	sudo insmod the_rm.ko
+install:
+	@echo "Installing modules..."; 
+	@export PASSWORD=$(PASSWORD); \
+	sudo insmod the_rm.ko password=$(PASSWORD)
 	sudo insmod the_usctm.ko
 	sudo insmod the_retprobe.ko
 	make -C singlefile-FS mount-fs
+	echo "Modules installed."
 	sudo ./client
-
 # Remove all installed modules
 uninstall:
 	echo "Removing modules"

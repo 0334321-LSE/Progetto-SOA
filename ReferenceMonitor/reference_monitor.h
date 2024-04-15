@@ -21,7 +21,6 @@
 #define STATE_MAX_LENGTH 16
 #define CMD_SIZE 5
 #define LOG_PATH "/mnt/monitor-fs/the-log"
-#define PASW "6d7e0406ffff04ffff60ffff0503ffffff05ff0dff50ffffffffff06ff7bff6c"
 
 extern struct reference_monitor* monitor;
 

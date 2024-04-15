@@ -125,7 +125,7 @@ int add_dir(char* modname, const char* path){
 
     struct file *dir;
     struct my_dir_context context;
-
+    int ret = 0;
     context.dir_ctx.actor = &add_entry_actor;
     // Assegnated in this way to avoid stupid warning 
 
@@ -157,9 +157,9 @@ int add_dir(char* modname, const char* path){
     filp_close(dir, NULL);
 
     // Then add the directory
-    add_file(modname,path);
+    ret = add_file(modname,path);
 
-    return 0;
+    return ret;
 }
 
 #if  LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
@@ -598,7 +598,7 @@ int calculate_sha256(const char *input, size_t input_len, char *output) {
     }
 
     // Allocate memory for the hash descriptor
-    desc = kmalloc(sizeof(struct shash_desc) + crypto_shash_descsize(tfm), GFP_KERNEL);
+    desc = kmalloc(sizeof(struct shash_desc) + crypto_shash_descsize(tfm), GFP_ATOMIC);
     if (!desc) {
         printk(KERN_ERR "Failed to allocate shash descriptor\n");
         ret = -ENOMEM;
@@ -630,7 +630,7 @@ int calculate_sha256(const char *input, size_t input_len, char *output) {
 
     // Copy the hash to the output buffer in hexadecimal format
     for (i = 0; i < crypto_shash_digestsize(tfm); i++) {
-        snprintf(output + (i * 2), 3, "%02x", hash[i]);
+        snprintf(output + (i * 2), 3, "%02x", (unsigned int)hash[i] & 0xFF);
     }
 
 free_desc:

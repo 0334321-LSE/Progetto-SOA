@@ -7,7 +7,7 @@ all:
 
 install: 
 # Check if the filesystem is already mounted
-	if lsmod | grep -q '^singlefilefs\s'; then \
+	@if lsmod | grep -q '^singlefilefs\s'; then \
 		echo "Module 'singlefilefs' is already loaded. Skipping installation."; \
 	else \
 		sudo insmod singlefilefs.ko; \
@@ -22,10 +22,10 @@ create-fs:
 	
 mount-fs: install create-fs
 # Check if the directory '/mnt/monitor-fs/' exists
-	if [ ! -d "/mnt/monitor-fs/" ]; then \
+	@if [ ! -d "/mnt/monitor-fs/" ]; then \
 		sudo mkdir -p "/mnt/monitor-fs/"; \
 	fi
 # Mount the filesystem if it's not already mounted
-	if ! grep -qs '/mnt/monitor-fs' /proc/mounts; then \
+	@if ! grep -qs '/mnt/monitor-fs' /proc/mounts; then \
 		sudo mount -o loop -t singlefilefs image /mnt/monitor-fs/; \
 	fi

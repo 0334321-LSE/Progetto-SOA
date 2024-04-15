@@ -33,18 +33,30 @@ MODULE_INFO(retpoline, "Y");
 #endif
 
 
+char *password = NULL;
+
+module_param(password, charp, S_IRUGO | S_IWUSR); // Define module parameter 'password'
+
 struct reference_monitor* monitor;
 
 // Implementazione dell'operazione di inizializzazione del monitor
-int reference_monitor_init(char* password) {
+int reference_monitor_init(void) {
+    if (!password || strlen(password)==0) {
+        printk("%s: Missing password for monitor init\n", MODNAME);
+        return -EINVAL;
+    }
+
     INIT_LIST_HEAD(&monitor->protected_paths);  // Inizializza la lista dei percorsi protetti
     spin_lock_init(&monitor->lock);  // Inizializza lo spinlock
 
     // Imposta lo stato iniziale del monitor (OFF)
     monitor->state = OFF;
-
+    
+    password = get_sha(password);
     // Inizializza il campo della password 
-    monitor->password = kstrdup(password, GFP_KERNEL);
+    monitor->password = kstrdup(password,GFP_KERNEL);
+    
+    // printk("%s: Password for monitor init: %s -> %s\n", MODNAME, password,monitor->password);
     if (!monitor->password)
         return -ENOMEM;  // Errore di memoria
 
@@ -72,7 +84,7 @@ void reference_monitor_cleanup(void) {
 // Module initialization
 int init_module(void) {
     int ret;
-    char* pasw = PASW;
+    
     
     // Allocate monitor
     monitor = kmalloc(sizeof(struct reference_monitor), GFP_KERNEL);
@@ -83,7 +95,7 @@ int init_module(void) {
     printk("%s: Reference monitor allocated successfully %px \n", MODNAME,monitor);
 
     // Initialize reference monitor
-    ret = reference_monitor_init(pasw);
+    ret = reference_monitor_init();
     if (ret) {
         printk("%s: Failed to initialize reference monitor\n",MODNAME);
         return ret;

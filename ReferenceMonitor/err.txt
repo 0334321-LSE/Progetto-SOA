@@ -1,0 +1,6 @@
+echo Installing modules...
+Installing modules...
+if [ -z  ]; then  echo Errore: Missing password; exit 1; fi;
+Errore: Missing password
+make: *** [Makefile:33: install] Errore 1
+

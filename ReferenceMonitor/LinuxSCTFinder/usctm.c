@@ -197,11 +197,15 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 
 		// kmalloc password into kernel space, PASW_MAX_LENGTH is the maximium size of the password in the kernel.
 		kernel_password = kmalloc(PASW_MAX_LENGTH, GFP_KERNEL);
-		if (!kernel_password)
+		if (!kernel_password){
+			printk("%s: Something went wrong during password allocation", MODNAME);
 			return -ENOMEM; 
+		}
 			
+	
 		// Copy from user space the password.
 		if (copy_from_user(kernel_password, password, PASW_MAX_LENGTH)) {
+			printk("%s: Something went wrong during password copy from user",MODNAME);
 			kfree(kernel_password);
 			return -EFAULT;
 		}
@@ -254,7 +258,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		char *kernel_password;
 		char *kernel_path;
 		struct protected_path *entry, *tmp;
-		
+		int ret = 0;
 		// Check effective user id
 		if (!uid_eq(current_euid(), GLOBAL_ROOT_UID)) {
 			printk("%s: Only root user can re-configure monitor .\n",MODNAME);
@@ -318,15 +322,15 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			if(is_directory(kernel_path)){
 				if(recursive){
 					//will iterate over the directory and its subdir:
-					add_dir(MODNAME,kernel_path);
+					ret = add_dir(MODNAME,kernel_path);
 				}
 				else{
-					add_file(MODNAME,kernel_path);
+					ret = add_file(MODNAME,kernel_path);
 				}
 					
 			}	
 			else{
-				add_file(MODNAME,kernel_path);
+				ret = add_file(MODNAME,kernel_path);
 			}
 				
 
@@ -363,7 +367,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 	exit:
 		kfree(kernel_path);
 
-		return 0; // Successo
+		return ret; // Successo
 	}
 
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)

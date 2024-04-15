@@ -24,7 +24,7 @@
 #define MODNAME "RPROB-MOD"
 
 MODULE_AUTHOR("Luca Saverio Esposito <lucasavespo17@gmail.com>");
-MODULE_DESCRIPTION("The module install kretprobe on different functions (see below) \
+MODULE_DESCRIPTION("The module installs kretprobe on different functions (see below) \
 and check if black-listed path are touched by this function. In that case: block the access and report information into a log file. \
 PAY ATTENTION: The module is developed for x86-64 and x86-32, it relies on the specific system call calling convention of this architectures.");
 

@@ -78,39 +78,30 @@ void execute_command(int command) {
 
 // Function to prompt and get a valid integer input from the user
 int get_integer_input(const char *prompt) {
-    int input = -1;
-    char buffer[100]; // Buffer for user input
+   char input;
+    int digit_value;
+    int is_valid = 0;
 
-    while (1) {
-        printf("%s", prompt);
-        fgets(buffer, sizeof(buffer), stdin);
+    while (!is_valid) {
+        printf("%s ",prompt);
 
-        // Remove newline character from the input
-        size_t len = strlen(buffer);
-        if (len > 0 && buffer[len - 1] == '\n') {
-            buffer[len - 1] = '\0';
-        }
+        // Read a single character from stdin
+        if (scanf(" %c", &input) != 1 || !isdigit(input) || getchar() != '\n') {
+            // If scanf failed to read a character or the input is not a digit or there are additional characters in the input buffer
+            printf("Error: Invalid input. Please enter a single digit (0-7).\n");
 
-        // Check if input is a valid integer
-        int valid = 1;
-        for (size_t i = 0; i < strlen(buffer); i++) {
-            if (!isdigit(buffer[i])) {
-                valid = 0;
-                break;
-            }
-        }
-
-        // If input is valid, convert it to an integer and return
-        if (valid) {
-            input = atoi(buffer);
-            break;
+            // Clear input buffer by reading and discarding remaining characters up to newline
+            while (getchar() != '\n'); // Clear stdin buffer
         } else {
-            printf("Invalid input. Please enter a valid integer.\n");
+            // Valid input: Convert char to integer value
+            digit_value = input - '0';
+            is_valid = 1; // Set flag to exit loop
         }
     }
 
-    return input;
+    return digit_value;
 }
+
 
 // Function to execute sys_state_update system call
 void execute_sys_state_update() {
