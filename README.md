@@ -10,6 +10,7 @@ make install
 ```
 
 If for some reason need to restart the client, it is inside /ReferenceMonitor, remember to launch it with sudo.
+The password needed to use the monitor is **soa**.
 
 ## Project specification
 This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:
