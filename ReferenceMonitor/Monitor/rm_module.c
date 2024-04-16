@@ -35,7 +35,7 @@ MODULE_INFO(retpoline, "Y");
 
 char *password = NULL;
 
-module_param(password, charp, S_IRUGO | S_IWUSR); // Define module parameter 'password'
+module_param(password, charp, S_IRUGO); // Define module parameter 'password'
 
 struct reference_monitor* monitor;
 

@@ -22,6 +22,7 @@ all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD)/singlefile-FS modules
 
 	gcc ./user/client.c -o client
+	gcc ./singlefile-FS/singlefilemakefs.c -o ./singlefile-FS/singlefilemakefs
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
@@ -37,6 +38,7 @@ install:
 	make -C singlefile-FS mount-fs
 	echo "Modules installed."
 	sudo ./client
+
 # Remove all installed modules
 uninstall:
 	echo "Removing modules"

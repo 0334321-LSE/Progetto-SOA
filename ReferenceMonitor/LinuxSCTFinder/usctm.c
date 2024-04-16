@@ -183,8 +183,8 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 
 		// Check effective user id
 		if (!uid_eq(current_euid(), GLOBAL_ROOT_UID)) {
-		printk("%s: Only root user can re-configure monitor .\n",MODNAME);
-		return-EPERM; // Must be root
+			printk("%s: Only root user can re-configure monitor .\n",MODNAME);
+			return-EPERM; // Must be root
 		}
 	
 		// Check monitor
@@ -216,6 +216,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			kfree(kernel_password);
 			return -EINVAL;  // Not valid password 
 		}
+		
 		kfree(kernel_password);
 
 		// Update monitor state

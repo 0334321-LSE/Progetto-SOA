@@ -373,7 +373,7 @@ ino_t get_inode_from_path(const char* percorso){
     char * pathname;
 
     // Ottieni il percorso del file
-    pathname = kstrdup(percorso, GFP_KERNEL);
+    pathname = kstrdup(percorso, GFP_ATOMIC);
     if (!pathname) {
         printk(KERN_ERR "Failed to allocate memory for destination string\n");
         return 0;
