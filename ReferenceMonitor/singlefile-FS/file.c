@@ -171,7 +171,9 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
             return -EIO;
         }
         // Adjust the offset to the beginning of the new block
-        offset = block_to_write * DEFAULT_BLOCK_SIZE;
+        offset = block_to_write * DEFAULT_BLOCK_SIZE;        
+        block_offset = offset % DEFAULT_BLOCK_SIZE;
+
         // Adjust the count to avoid writing beyond the block boundary
         count = min_t(size_t, count, DEFAULT_BLOCK_SIZE);
     } else {
