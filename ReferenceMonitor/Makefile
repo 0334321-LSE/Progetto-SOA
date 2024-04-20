@@ -20,9 +20,9 @@ endif
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD)/singlefile-FS modules
-
-	gcc ./user/client.c -o client
+	
 	gcc ./singlefile-FS/singlefilemakefs.c -o ./singlefile-FS/singlefilemakefs
+	gcc ./user/client.c -o client
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
@@ -31,11 +31,14 @@ clean:
 
 install:
 	@echo "Installing modules..."; 
-	@export PASSWORD=$(PASSWORD); \
-	sudo insmod the_rm.ko password=$(PASSWORD)
+	@if echo "$(PASSWORD)" | grep -q ' '; then \
+		echo "Error: Password cannot contain spaces."; \
+		exit 1; \
+	fi
+	sudo insmod the_rm.ko password="$(PASSWORD)"
 	sudo insmod the_usctm.ko
 	sudo insmod the_retprobe.ko
-	make -C singlefile-FS mount-fs
+	@make -C singlefile-FS mount-fs
 	echo "Modules installed."
 	sudo ./client
 

@@ -210,6 +210,8 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			return -EFAULT;
 		}
 
+		//printk("%s: Password: %s",MODNAME,kernel_password);
+
 		// Check password
 		if (strncmp(get_sha(kernel_password), monitor->password, strlen(monitor->password)) != 0) {
 			printk("%s: Password isn't valid.\n",MODNAME);
@@ -355,7 +357,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			spin_unlock(&monitor->lock);
 
 			// Return error if path doesn't exist
-			printk("%s: Path %s doesn't exists %d\n",MODNAME, kernel_path,current->pid);
+			printk("%s: Path %s isn't protected %d\n",MODNAME, kernel_path,current->pid);
 			kfree(kernel_path);
 			return -ENOENT; // Path not find
 		

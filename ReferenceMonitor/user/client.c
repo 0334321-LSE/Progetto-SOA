@@ -20,6 +20,31 @@ void print_monitor_log();
 int get_state(char * state);
 void execute_command(int command);
 void fix_output();
+int read_input(char *buffer, size_t size);
+
+// Function to read a line of input using fgets and remove trailing newline
+int read_input(char *buffer, size_t size) {
+    if (buffer == NULL || size == 0) {
+        printf("Invalid argument...\n");
+        return 0; // Invalid arguments
+    }
+
+    if (fgets(buffer, size, stdin) != NULL) {
+        // Check if last character is a newline (\n)
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0'; // Remove newline by replacing with null terminator
+        } else {
+            // Input exceeded buffer size or no newline found (input too large)
+            printf("Input too big, exit...\n");
+            return 0; // Return 0 to indicate failure (input too big)
+        }
+        return 1; // Return 1 to indicate success (input read)
+    } else {
+        printf("An error occured, exit...\n");
+        return 0; // Error reading input
+    }
+}
 
 // Function to execute the chosen command
 void execute_command(int command) {
@@ -29,31 +54,26 @@ void execute_command(int command) {
             printf("---------------------------- \n");
             printf("- Changing monitor state - \n");
             execute_sys_state_update();
-            fix_output();
             break;
         case 2:
             printf("---------------------------- \n");
             printf("- Adding one path - \n");
             execute_sys_configure_path_add();
-            fix_output();
             break;
         case 3:
             printf("---------------------------- \n");
             printf("- Adding path recursive - \n");
             execute_sys_configure_path_add_recursive();
-            fix_output();
             break;
         case 4:
             printf("---------------------------- \n");
             printf("- Removing one path - \n");
             execute_sys_configure_path_remove();
-            fix_output();
             break;
         case 5:
             printf("---------------------------- \n");
             printf("- Removing all paths - \n");
             execute_sys_remove_all_paths();
-            fix_output();
             break;
         case 6:
             printf("---------------------------- \n");
@@ -111,7 +131,9 @@ void execute_sys_state_update() {
     // Prompt user for state input and validate
     while (1) {
         printf("Enter state (ON, OFF, REC-ON, REC-OFF): ");
-        scanf("%9s", state); // Limit input to 9 characters to prevent buffer overflow
+                
+        if(!read_input(state,sizeof(state)))
+            goto exit;
 
         // Validate state input
         if (strcmp(state, "ON") == 0 || strcmp(state, "OFF") == 0 ||
@@ -124,8 +146,9 @@ void execute_sys_state_update() {
 
     // Prompt user for password input
     printf("Enter password: ");
-    scanf("%64s", password); // Limit input to 64 characters to prevent buffer overflow
-
+    if(!read_input(password,sizeof(password)))
+        goto exit;
+    
     // Call the system call with state and password
     long ret = syscall(134,&state,&password);
 
@@ -135,8 +158,8 @@ void execute_sys_state_update() {
     } else {
         printf("Failed to execute system call.\n");
     }
+exit:
     printf("---------------------------- \n");
-
 }
 
 // Function to execute sys_configure_path system call in add mode
@@ -147,7 +170,8 @@ void execute_sys_configure_path_add() {
     while(1){
         // Prompt user for path input
         printf("Enter path: ");
-        scanf("%s", path);
+        if(!read_input(path,sizeof(path)))
+            goto exit;
 
         // Check if the path is absolute
         if (path[0] != '/') 
@@ -163,7 +187,8 @@ void execute_sys_configure_path_add() {
 
     // Prompt user for password input
     printf("Enter password: ");
-    scanf("%64s", password);
+    if(!read_input(password,sizeof(password)))
+        goto exit;
 
     // Call the system call with path, password, mod and recursive
     long ret = syscall(174,&path,&password,0,0);
@@ -174,6 +199,8 @@ void execute_sys_configure_path_add() {
     } else {
         printf("Failed to execute system call.\n");
     }
+
+exit:
     printf("---------------------------- \n");
 }
 
@@ -185,18 +212,24 @@ void execute_sys_configure_path_add_recursive() {
     while(1){
         // Prompt user for path input
         printf("Enter path: ");
-        scanf("%s", path);
+        if(!read_input(path,sizeof(path)))
+            goto exit;
 
         // Check if the path is absolute
         if (path[0] != '/') 
             printf("Error: Path must be absolute.\n");
-        else
-            break;
+        else{
+            if (strlen(path)==1)
+                printf("Error: Can't black list: '/' \n");
+            else
+                break;
+        }
     }
 
     // Prompt user for password input
     printf("Enter password: ");
-    scanf("%64s", password);
+    if(!read_input(password,sizeof(password)))
+        goto exit;
 
     // Call the system call with path, password, mod and recursive
     long ret = syscall(174,&path,&password,0,1);
@@ -207,6 +240,8 @@ void execute_sys_configure_path_add_recursive() {
     } else {
         printf("Failed to execute system call.\n");
     }
+
+exit:
     printf("---------------------------- \n");
 }
 
@@ -218,7 +253,8 @@ void execute_sys_configure_path_remove() {
     while(1){
         // Prompt user for path input
         printf("Enter path: ");
-        scanf("%s", path);
+        if(!read_input(path,sizeof(path)))
+            goto exit;
 
         // Check if the path is absolute
         if (path[0] != '/') 
@@ -229,7 +265,8 @@ void execute_sys_configure_path_remove() {
 
     // Prompt user for password input
     printf("Enter password: ");
-    scanf("%64s", password);
+    if(!read_input(password,sizeof(password)))
+        goto exit;
 
     // Call the system call with path, password, and mod
     long ret = syscall(174,&path,&password,1);
@@ -240,6 +277,7 @@ void execute_sys_configure_path_remove() {
     } else {
         printf("Failed to execute system call.\n");
     }
+exit:
     printf("---------------------------- \n");
 
 }
@@ -250,7 +288,8 @@ void execute_sys_remove_all_paths() {
 
     // Prompt user for password input
     printf("Enter password: ");
-    scanf("%64s", password); // Limit input to 64 characters to prevent buffer overflow
+    if(!read_input(password,sizeof(password)))
+        goto exit;
 
     // Call the system call with password
     long ret = syscall(183,&password);
@@ -262,6 +301,7 @@ void execute_sys_remove_all_paths() {
         printf("Failed to execute system call.\n");
     }
 
+exit:
     printf("---------------------------- \n");
 
 }

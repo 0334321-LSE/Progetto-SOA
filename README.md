@@ -6,7 +6,8 @@ Here the command to build and launch the project with all its feature:
 
 ```
 make SYMLINK=1 LINK=1 all
-make install PASSWORD=<chosen_password>
+make install PASSWORD="chosen_password" 
+#spaces are not allowed#
 ```
 
 If for some reason need to restart the client, it is inside /ReferenceMonitor, remember to launch it with sudo.

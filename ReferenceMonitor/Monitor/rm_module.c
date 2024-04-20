@@ -36,6 +36,7 @@ MODULE_INFO(retpoline, "Y");
 char *password = NULL;
 
 module_param(password, charp, S_IRUGO); // Define module parameter 'password'
+MODULE_PARM_DESC(password, "Password for monitor operation");
 
 struct reference_monitor* monitor;
 
@@ -52,7 +53,10 @@ int reference_monitor_init(void) {
     // Imposta lo stato iniziale del monitor (OFF)
     monitor->state = OFF;
     
+    //printk("%s: Password: %s",MODNAME,password);
+
     password = get_sha(password);
+
     // Inizializza il campo della password 
     monitor->password = kstrdup(password,GFP_KERNEL);
     
