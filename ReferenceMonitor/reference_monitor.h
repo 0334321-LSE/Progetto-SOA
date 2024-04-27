@@ -21,6 +21,8 @@
 #define STATE_MAX_LENGTH 16
 #define CMD_SIZE 5
 #define LOG_PATH "/mnt/monitor-fs/the-log"
+#define OUTPUT_BUFFER_SIZE ((PATH_MAX + 1) * 1000)
+
 
 extern struct reference_monitor* monitor;
 

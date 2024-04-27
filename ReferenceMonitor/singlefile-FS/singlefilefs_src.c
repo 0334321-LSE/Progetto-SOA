@@ -8,9 +8,13 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/version.h>
+
+#define KERNEL_CODE
+
 #include "singlefilefs.h"
 
 
+rwlock_t log_rwlock; 
 
 static struct super_operations singlefilefs_super_ops = {
 };
@@ -55,6 +59,9 @@ int singlefilefs_fill_super(struct super_block *sb, void *data, int silent) {
         return -ENOMEM;
     }
     
+    // Initialize inode lock
+    //spin_lock_init(&root_inode->i_lock);
+
     // Version dipendent instruction
     #if LINUX_VERSION_CODE <= KERNEL_VERSION(5,12,0)
         inode_init_owner(root_inode, NULL, S_IFREG );
@@ -123,6 +130,9 @@ static int singlefilefs_init(void) {
 
     int ret;
 
+    // Initialize the rw lock
+    rwlock_init(&log_rwlock);
+    
     //register filesystem
     ret = register_filesystem(&onefilefs_type);
     if (likely(ret == 0))

@@ -8,6 +8,7 @@
 
 #define OUTPUT_BUFFER_SIZE ((PATH_MAX + 1) * 1000)
 #define LOG_PATH "/mnt/monitor-fs/the-log"
+#define STATE_MAX_LENGTH 16
 
 int get_integer_input(const char *prompt);
 void execute_sys_state_update();
@@ -125,7 +126,7 @@ int get_integer_input(const char *prompt) {
 
 // Function to execute sys_state_update system call
 void execute_sys_state_update() {
-    char state[10]; // Buffer for state
+    char state[STATE_MAX_LENGTH]; // Buffer for state
     char password[65]; // Buffer for password
 
     // Prompt user for state input and validate
@@ -343,7 +344,7 @@ void print_monitor_log(){
     // Execute the command using system
     system(command);
 
-    printf("---------------------------- \n");
+    printf("\n---------------------------- \n");
 }
 
 int get_state(char * state){
@@ -361,7 +362,7 @@ void fix_output(){
 int main(int argc, char** argv){
     int command;
     int c;
-    char* current_state = (char *) malloc(16 * sizeof(char));
+    char* current_state = (char *) malloc(STATE_MAX_LENGTH * sizeof(char));
 
     while (1) {
         system("clear");

@@ -8,6 +8,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
+#define KERNEL_CODE
+
 #include "singlefilefs.h"
 
 //this iterate function just returns 3 entries: . and .. and then the name of the unique file of the file system

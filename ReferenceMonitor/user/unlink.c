@@ -3,17 +3,22 @@
 #include <unistd.h>
 
 int main() {
-    const char *filename = "/media/sf_shared-dir/Progetto-SOA/ReferenceMonitor/user/test.txt";
+    const char *filename = "/home/xave/Scrivania/Prova/prova.txt";
+    int result;
+    int i = 0;
+    while(1){
+        // Esegue l'operazione di rimozione del file
+        result = unlink(filename);
+        i++;
+        if (result == -1) {
+            perror("Errore nella rimozione del file");
 
-    // Esegue l'operazione di rimozione del file
-    int result = unlink(filename);
-
-    if (result == -1) {
-        perror("Errore nella rimozione del file");
-        exit(EXIT_FAILURE);
-    } else {
-        printf("Il file è stato rimosso con successo.\n");
+        } else {
+            printf("Il file è stato rimosso con successo.\n");
+        }
+        if(i==1000){
+            return 0;
+        }
     }
-
     return 0;
 }

@@ -180,6 +180,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		// Vector of states for cute printing
 		const char* states[] = {"OFF", "REC_OFF", "ON", "REC_ON"};
 		char* kernel_password;
+		char* kernel_state;
 
 		// Check effective user id
 		if (!uid_eq(current_euid(), GLOBAL_ROOT_UID)) {
@@ -221,14 +222,28 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		
 		kfree(kernel_password);
 
+
+		// kmalloc state into kernel space, PASW_MAX_LENGTH is the maximium size of the password in the kernel.
+		kernel_state = kmalloc(STATE_MAX_LENGTH, GFP_KERNEL);
+		if (!kernel_state){
+			printk("%s: Something went wrong during password allocation", MODNAME);
+			return -ENOMEM; 
+		}
+		// Copy from user space the password.
+		if (copy_from_user(kernel_state, state, STATE_MAX_LENGTH)) {
+			printk("%s: Something went wrong during state copy from user",MODNAME);
+			kfree(kernel_state);
+			return -EFAULT;
+		}
+
 		// Update monitor state
-		if (strncmp(state, "ON",strlen("ON")) == 0) {
+		if (strcmp(kernel_state, "ON") == 0) {
 			monitor->state = ON;
-		} else if (strncmp(state, "OFF",strlen("OFF")) == 0) {
+		} else if (strcmp(kernel_state, "OFF") == 0) {
 			monitor->state = OFF;
-		} else if (strncmp(state, "REC-ON",strlen("REC-ON")) == 0) {
+		} else if (strcmp(kernel_state, "REC-ON") == 0) {
 			monitor->state = REC_ON;
-		} else if (strncmp(state, "REC-OFF",strlen("REC-OFF")) == 0) {
+		} else if (strcmp(kernel_state, "REC-OFF") == 0) {
 			monitor->state = REC_OFF;
 		} else {
 			printk("%s: Invalid state. \n",MODNAME);
@@ -236,11 +251,10 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		}
 
 		new_state = monitor->state;
-		/*spin_unlock(&monitor->lock);
-		printk("%s: UNLOCK \n",MODNAME);*/
 
+	
 		printk("%s: State changed from %s to %s correctly by thread: %d\n",MODNAME,states[old_state],states[new_state],current->pid);
-
+		kfree(kernel_state);
 		return 0;  // Successo
 	}
 
@@ -393,12 +407,21 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		// chars written in the loop for each entry 
 		int chars_written = 0;
 		int ret =0;
+		char * kernel_output;
 
 		// Check monitor
 		if ( !monitor ){
 			printk("%s: Monitor isn't allocated, install rm_module before using this one.\n",MODNAME);
 			return-EINVAL; // Monitor doesn't exists
 		}
+
+		// kmalloc output into kernel space.
+		kernel_output = kmalloc(OUTPUT_BUFFER_SIZE, GFP_KERNEL);
+		if (!kernel_output){
+			printk("%s: Something went wrong during memory allocation \n", MODNAME);
+			return -ENOMEM; 
+		}
+
 
 		spin_lock(&monitor->lock);
 		i=1;
@@ -415,7 +438,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 				goto exit;
 			}
 			// Concatenate the current path into the output buffer
-			if ((chars_written = snprintf(output + strlen(output), remaining_space,"\n|Path %d: %s", i, entry->path_name)) < 0) {
+			if ((chars_written = snprintf(kernel_output + strlen(kernel_output), remaining_space,"\n|Path %d: %s", i, entry->path_name)) < 0) {
 				printk("%s: Failed to concatenate path %d\n", MODNAME,i );
 				ret = -EFAULT; 
 				goto exit;
@@ -423,9 +446,16 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			i++;
 			output_length += chars_written;
 		}
-	
+		
+		if(copy_to_user(output, kernel_output, strlen(kernel_output)) != 0 ){
+			printk("%s: Something went wrong during copy_to_user \n", MODNAME);
+			ret = -EFAULT; // Error copying to user space
+		}
+
 	exit:
 		spin_unlock(&monitor->lock);
+
+		kfree(kernel_output);
 		return ret;
 
 	} 

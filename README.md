@@ -228,10 +228,19 @@ ssize_t __kernel_write_iter(struct file *file, struct iov_iter *from, loff_t *po
 	return ret;
 }
 ``` 
+The read and write operations are synchronized by using a read/write lock.
 
+```
+rwlock_t log_rwlock; 
+```
+Using a reader-writer lock can offer the following benefits:
+
+-   Improved concurrency: Allows multiple readers to access data concurrently, enhancing system performance.
+-   Reduced contention: Minimizes contention for shared resources by enabling concurrent reads and serializing writes.
+-   Balanced resource utilization: Ensures fairness between readers and writers, preventing writer starvation.
 
 ### Defered Work
-The hash evaluation of the program file path that has accessed a blacklisted file/directory and the subsequent write operation to the log file are performed using deferred work. The write must be executed after the hash evaluation is complete, so it waits for the completion signal before proceeding with the logging.
+The hash evaluation of the program file path that has accessed a blacklisted file/directory and the subsequent write operation to the log file are performed using defered work. The write must be executed after the hash evaluation is complete, so it waits for the completion signal before proceeding with the logging. To achieve this result work queues are involved.
 
 ``` 
 struct packed_work{

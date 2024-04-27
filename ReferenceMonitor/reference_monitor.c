@@ -107,7 +107,7 @@ int add_file(char* modname, const char* path){
 
     spin_unlock(&monitor->lock);
 
-    //printk("%s: Path %s with inode: %ld added successfully by %d\n",modname, path, entry->inode_number ,current->pid);
+    printk("%s: Path %s with inode: %ld added successfully by %d\n",modname, path, entry->inode_number ,current->pid);
     
 end:
     return ret;
@@ -146,7 +146,7 @@ int add_dir(char* modname, const char* path){
     // Open
     dir = filp_open(path, O_RDONLY, 0);
     if (IS_ERR(dir)) {
-        pr_err("%s: Error during directory opening %s\n", modname ,path);
+        pr_err("%s: Error %ld during directory opening %s\n", modname, PTR_ERR(dir) ,path);
         return -EFAULT;
     }
 
@@ -226,7 +226,7 @@ static bool add_entry_actor(struct dir_context *ctx, const char *name, int type,
             struct file *subdir = filp_open(full_path, O_RDONLY, 0);
             
             if (IS_ERR(subdir)) {
-                    printk("%s: error during file opening %s\n", modname, full_path);
+                    printk("%s: error %ld during file opening %s\n", modname, PTR_ERR(subdir),full_path);
                     ret = PTR_ERR(subdir);
                     goto free_filename;
             }
@@ -318,7 +318,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
             struct file *subdir = filp_open(full_path, O_RDONLY, 0);
             
             if (IS_ERR(subdir)) {
-                    printk("%s: Error during file opening %s\n", modname, full_path);
+                    printk("%s: Error %ld during file opening %s\n", modname, PTR_ERR(subdir),full_path);
                     ret = PTR_ERR(subdir);
                     goto free_filename;
             }
@@ -346,21 +346,25 @@ free_modname:
 int file_in_protected_paths(const char* filename){
     struct protected_path *entry;
     ino_t inode_number;
-   
+    int ret = 0;
     inode_number = get_inode_from_path(filename);
     if (inode_number == 0)
         //not valid path
         return 0;
 
+    //spin_lock(&monitor->lock); can preempte kprobes
     // Iterate on the list, *_safe is not required is needed only for removes
     list_for_each_entry(entry, &monitor->protected_paths, list){
         if (entry->inode_number == inode_number) {
-            return 1;       
+            ret = 1;
+            goto exit;       
         }
     }
+exit:
+    //spin_unlock(&monitor->lock);
 
     // Il percorso non è presente nella lista dei percorsi protetti
-    return 0;
+    return ret;
 }
 
 
@@ -401,17 +405,21 @@ ino_t get_inode_from_path(const char* percorso){
 
 int inode_in_protected_paths(long unsigned int inode_number){
     struct protected_path *entry; 
+    int ret = 0;
+    //spin_lock(&monitor->lock);
     // Iterate on the list, *_safe is not required is needed only for removes
     list_for_each_entry(entry, &monitor->protected_paths, list){
         // strncmp more secure in respect of strcmp, prevents buffer overflow
         if (entry->inode_number == inode_number) {
             // Il percorso è presente nella lista dei percorsi protetti
-            return 1;       
+            ret = 1;       
+            goto exit;
         }
     }
-
+exit:
+    //spin_unlock(&monitor->lock);
     // Il percorso non è presente nella lista dei percorsi protetti
-    return 0;
+    return ret;
 }
 
 int parent_is_blacklisted(const struct dentry* dentry){
@@ -501,7 +509,7 @@ int get_path_and_hash(struct log_entry *entry) {
     // Open the file for reading
     file = filp_open(path, O_RDONLY, 0);
     if (!file || IS_ERR(file)) {
-        printk("Failed to open file: %s\n", path);
+        printk("Failed to open file %s with error %ld\n", path, PTR_ERR(file));
         ret = -ENOENT;
         goto cleanup;
     }
@@ -592,7 +600,7 @@ int calculate_sha256(const char *input, size_t input_len, char *output) {
     // Allocate memory for the transformation object
     tfm = crypto_alloc_shash("sha256", 0, 0);
     if (IS_ERR(tfm)) {
-        printk(KERN_ERR "Failed to allocate crypto shash\n");
+        printk(KERN_ERR "Failed to allocate crypto shash error code %ld\n",PTR_ERR(tfm));
         ret = PTR_ERR(tfm);
         goto free_hash;
     }
@@ -662,13 +670,13 @@ int write_log_entry(struct log_entry* entry) {
     log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
     if (IS_ERR(log_file)) {
         int err = PTR_ERR(log_file);
-        printk(KERN_ERR "Failed to open log file: %d\n", err);
+        printk("Failed to open log file: %d \n", err);
         ret = err;
         goto cleanup;
     }
 
     // Format file string
-    snprintf(log_data, sizeof(log_data), "|| %s || %d || %d || %u || %u || %s - %s ||\n",
+    snprintf(log_data, sizeof(log_data), "\n|| %s || %d || %d || %u || %u || %s - %s ||",
         entry->cmd, entry->thread_id, entry->process_tgid, entry->user_id,
         entry->effective_user_id, entry->program_path, entry->file_content_hash);
     

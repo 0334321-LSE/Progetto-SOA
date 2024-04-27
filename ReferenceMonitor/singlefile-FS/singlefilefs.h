@@ -3,6 +3,12 @@
 
 #include <linux/types.h>
 #include <linux/fs.h>
+#ifdef KERNEL_CODE
+	// Kernel-specific code
+	#include <linux/spinlock.h>
+	// Synchronize write/read access
+	extern rwlock_t log_rwlock;
+#endif
 
 
 #define MOD_NAME "SINGLE FILE FS"
@@ -55,6 +61,7 @@ struct onefilefs_sb_info {
 // file.c
 extern const struct inode_operations onefilefs_inode_ops;
 extern const struct file_operations onefilefs_file_operations; 
+
 
 // dir.c
 extern const struct file_operations onefilefs_dir_operations;

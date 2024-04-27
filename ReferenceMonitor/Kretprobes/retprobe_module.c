@@ -94,6 +94,10 @@ static void write_log_work_function(struct work_struct *work) {
 
     // Perform the logging operation
     write_log_entry(entry);
+    
+    // kfree the work_structure when the job is done
+    kfree(p_work->the_entry);
+    kfree(p_work);
     //printk("write_log done\n");
 }
 // ---------------------------------------
@@ -230,9 +234,11 @@ static int unlink_pre_handler(struct kretprobe_instance *p, struct pt_regs *the_
     dentry = (struct dentry*) the_regs->si;
     target = dentry->d_inode;
 
+    //printk("%s: Unlink on %s with inode: %ld\n", MODNAME,dentry->d_name.name,target->i_ino);
+
     if(inode_in_protected_paths(target->i_ino)){
         
-        //Write on log
+        //Write on log 
         schedule_defered_work("UNLK");
         atomic_inc((atomic_t*)&unlink_audit_counter);
 

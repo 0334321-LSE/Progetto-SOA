@@ -1,0 +1,1 @@
+gcc -o logfile_threads logfile_threads.c -lpthread
