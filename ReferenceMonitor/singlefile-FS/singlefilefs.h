@@ -6,8 +6,10 @@
 #ifdef KERNEL_CODE
 	// Kernel-specific code
 	#include <linux/spinlock.h>
+	#include <linux/mutex.h>
 	// Synchronize write/read access
-	extern rwlock_t log_rwlock;
+	//extern rwlock_t log_rwlock;
+	extern struct mutex log_mutex;
 #endif
 
 

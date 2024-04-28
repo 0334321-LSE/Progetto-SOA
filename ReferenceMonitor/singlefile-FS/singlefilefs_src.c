@@ -8,13 +8,13 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/version.h>
-
 #define KERNEL_CODE
 
 #include "singlefilefs.h"
 
 
-rwlock_t log_rwlock; 
+//rwlock_t log_rwlock; 
+struct mutex log_mutex;
 
 static struct super_operations singlefilefs_super_ops = {
 };
@@ -131,8 +131,9 @@ static int singlefilefs_init(void) {
     int ret;
 
     // Initialize the rw lock
-    rwlock_init(&log_rwlock);
-    
+    //rwlock_init(&log_rwlock);
+    mutex_init(&log_mutex);
+
     //register filesystem
     ret = register_filesystem(&onefilefs_type);
     if (likely(ret == 0))

@@ -103,7 +103,10 @@ int add_file(char* modname, const char* path){
     // Acquire lock to work with the list
     spin_lock(&monitor->lock);
 
-    list_add(&entry->list, &monitor->protected_paths);
+    // Insert the new entry into the list under RCU protection
+    rcu_read_lock();
+    list_add_rcu(&entry->list, &monitor->protected_paths);
+    rcu_read_unlock();
 
     spin_unlock(&monitor->lock);
 
@@ -253,7 +256,7 @@ static int add_entry_actor(struct dir_context *ctx, const char *name, int type, 
 	char *full_path;
     char *file_name;
 
-    char last_char;
+    char last_char='\0';
 	// retrieve base dir path from struct custom_dir_context 
 	struct my_dir_context *my_ctx = container_of(ctx, struct my_dir_context, dir_ctx);
     int ret = 0;
@@ -344,7 +347,7 @@ free_modname:
 
 
 int file_in_protected_paths(const char* filename){
-    struct protected_path *entry;
+    struct protected_path *entry, *tmp;
     ino_t inode_number;
     int ret = 0;
     inode_number = get_inode_from_path(filename);
@@ -352,16 +355,15 @@ int file_in_protected_paths(const char* filename){
         //not valid path
         return 0;
 
-    //spin_lock(&monitor->lock); can preempte kprobes
-    // Iterate on the list, *_safe is not required is needed only for removes
-    list_for_each_entry(entry, &monitor->protected_paths, list){
+    rcu_read_lock();
+    list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list){
         if (entry->inode_number == inode_number) {
             ret = 1;
             goto exit;       
         }
     }
 exit:
-    //spin_unlock(&monitor->lock);
+    rcu_read_unlock();
 
     // Il percorso non è presente nella lista dei percorsi protetti
     return ret;
@@ -404,11 +406,10 @@ ino_t get_inode_from_path(const char* percorso){
 }
 
 int inode_in_protected_paths(long unsigned int inode_number){
-    struct protected_path *entry; 
+    struct protected_path *entry, *tmp; 
     int ret = 0;
-    //spin_lock(&monitor->lock);
-    // Iterate on the list, *_safe is not required is needed only for removes
-    list_for_each_entry(entry, &monitor->protected_paths, list){
+    rcu_read_lock();
+    list_for_each_entry_safe(entry, tmp,&monitor->protected_paths, list){
         // strncmp more secure in respect of strcmp, prevents buffer overflow
         if (entry->inode_number == inode_number) {
             // Il percorso è presente nella lista dei percorsi protetti
@@ -417,7 +418,7 @@ int inode_in_protected_paths(long unsigned int inode_number){
         }
     }
 exit:
-    //spin_unlock(&monitor->lock);
+    rcu_read_unlock();
     // Il percorso non è presente nella lista dei percorsi protetti
     return ret;
 }

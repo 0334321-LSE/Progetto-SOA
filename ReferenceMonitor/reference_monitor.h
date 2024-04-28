@@ -14,6 +14,7 @@
 #include <linux/crypto.h>
 #include <crypto/hash.h>
 #include <linux/sched.h>
+#include <linux/rcupdate.h>
 
 // MAX PASW SIZE
 #define PASW_MAX_LENGTH 65

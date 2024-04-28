@@ -318,6 +318,9 @@ void execute_sys_print_paths() {
         return;
     }
 
+    // Initialize the output buffer to zeros
+    memset(output, 0, OUTPUT_BUFFER_SIZE);
+
     // Call the system call with password
     long ret = syscall(182,output,OUTPUT_BUFFER_SIZE);
 

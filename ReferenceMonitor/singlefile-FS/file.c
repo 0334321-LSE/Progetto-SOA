@@ -15,18 +15,6 @@
 
 #include "singlefilefs.h"
 
-/*
-// Acquire inode lock
-static inline void lock_inode(struct inode *inode) {
-    spin_lock(&inode->i_lock);
-}
-
-// Release inode lock
-static inline void unlock_inode(struct inode *inode) {
-    spin_unlock(&inode->i_lock);
-}
-*/
-
 ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t * off) {
 
     struct buffer_head *bh = NULL;
@@ -42,14 +30,14 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
     //*off can be changed concurrently 
     //add synchronization if you need it for any reason
 
-    read_lock(&log_rwlock);
-    //lock_inode(the_inode);
+    //read_lock(&log_rwlock);
+    mutex_lock(&log_mutex);
     file_size = the_inode->i_size;
 
     //check that *off is within boundaries
     if (*off >= file_size){
-        read_unlock(&log_rwlock);
-        //unlock_inode(the_inode);
+        mutex_unlock(&log_mutex);
+        //read_unlock(&log_rwlock);
         return 0;
     }
         
@@ -69,16 +57,17 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
 
     bh = (struct buffer_head *)sb_bread(filp->f_path.dentry->d_inode->i_sb, block_to_write);
     if(!bh){
-        read_unlock(&log_rwlock);
-	    //unlock_inode(the_inode);
+        mutex_unlock(&log_mutex);
+        //read_unlock(&log_rwlock);
         return -EIO;
     }
 
     ret = copy_to_user(buf,bh->b_data + block_offset, len);
     *off += (len - ret);
     brelse(bh); 
-    read_unlock(&log_rwlock);    
-    //unlock_inode(the_inode);
+
+    mutex_unlock(&log_mutex);
+    //read_unlock(&log_rwlock);    
 
     return len - ret;
 
@@ -112,8 +101,9 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
     size_t remaining_space_in_block;
  
     //Get the lock
-    write_lock(&log_rwlock);
-    
+    //write_lock(&log_rwlock);
+    mutex_lock(&log_mutex);
+
      //  APPEND STARTS 
     // Get the current offset within the file
     file_size = i_size_read(the_inode);
@@ -133,11 +123,13 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
 
     // Check if the remaining space in the current block is insufficient for the data
     if (remaining_space_in_block <= len) {
-        printk("%s: Insufficient space, allocate new block", MOD_NAME);
+        printk("%s: Insufficient space, moving to new block", MOD_NAME);
         bh = (struct buffer_head *)sb_bread(the_inode->i_sb, block_to_write);
           if (!bh) {
             //Free the lock
-            write_unlock(&log_rwlock);
+            //write_unlock(&log_rwlock);
+            mutex_unlock(&log_mutex);
+
             return -EIO;
         }
         
@@ -149,6 +141,7 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
         // Adjust the offset and the block_offset to the beginning of the new block
         offset += remaining_space_in_block;
         block_offset = 0;
+
         // Go ahead to new block
         block_to_write++;
     }
@@ -157,7 +150,9 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
     bh = (struct buffer_head *)sb_bread(the_inode->i_sb, block_to_write);
     if (!bh) {
         //Free the lock
-        write_unlock(&log_rwlock);
+        //write_unlock(&log_rwlock);
+        mutex_unlock(&log_mutex);
+
         return -EIO;
     }
 
@@ -177,7 +172,9 @@ ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from) {
     file->f_pos = offset;
 
     //Free the lock
-    write_unlock(&log_rwlock);
+    //write_unlock(&log_rwlock);
+    mutex_unlock(&log_mutex);
+
     
     // Release the buffer head
     brelse(bh);

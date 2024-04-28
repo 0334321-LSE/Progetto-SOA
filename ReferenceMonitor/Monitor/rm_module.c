@@ -71,19 +71,30 @@ int reference_monitor_init(void) {
 void reference_monitor_cleanup(void) {
     struct protected_path *entry, *tmp;
 
-    // Libera tutti i percorsi protetti nella lista
+    // Acquire lock to work with the list
     spin_lock(&monitor->lock);
 
+    rcu_read_lock();
+
+    // Iterate over the old list and free entries under RCU protection
     list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
-        list_del(&entry->list);
+        list_del_rcu(&entry->list);
+        kfree(entry->path_name);
         kfree(entry);
     }
-    
-    // Dealloca la memoria per la password
-    kfree(monitor->password);
+
+    rcu_read_unlock();
+
+    // Release the lock before freeing individual entries
     spin_unlock(&monitor->lock);
 
+    // Synchronize RCU to ensure all readers have finished
+    synchronize_rcu();
+
+    // Dealloca la memoria per la password
+    kfree(monitor->password);
 }
+
 
 // Module initialization
 int init_module(void) {

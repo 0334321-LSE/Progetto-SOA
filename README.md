@@ -59,7 +59,31 @@ struct reference_monitor {
 };
 ``` 
 
-The spinlock is used for operations that modify the list of protected paths.
+The spinlock is used for operations that modify the list of protected paths. 
+
+For operations that solely involve traversing the protected_paths list, is used an RCU-based solution:
+
+```
+int inode_in_protected_paths(long unsigned int inode_number){
+    struct protected_path *entry, *tmp; 
+    int ret = 0;
+    rcu_read_lock();
+
+    list_for_each_entry_safe(entry, tmp,&monitor->protected_paths, list){
+        // strncmp more secure in respect of strcmp, prevents buffer overflow
+        if (entry->inode_number == inode_number) {
+            // Il percorso è presente nella lista dei percorsi protetti
+            ret = 1;       
+            goto exit;
+        }
+    }
+exit:
+    rcu_read_unlock();
+    // Il percorso non è presente nella lista dei percorsi protetti
+    return ret;
+
+}
+```
 
 The monitor is shared among various modules of the project through the use of:
 
@@ -171,22 +195,6 @@ The selection of functions to monitor was based on two key ideas:
 2) Intercepting functions that expose the inode of the file/directory.
 The second point is crucial because most checks in the blacklist rely on filtering by inode number. Only symlink checks use the path due to the nature of the function that exposes the original file's path. Directly working with inode numbers avoid the overhead needed to obtain the absolute path of the file/directory.
 
-```
-int inode_in_protected_paths(long unsigned int inode_number){
-    struct protected_path *entry; 
-    // Iterate on the list, *_safe is not required is needed only for removes
-    list_for_each_entry(entry, &monitor->protected_paths, list){
-        // strncmp more secure in respect of strcmp, prevents buffer overflow
-        if (entry->inode_number == inode_number) {
-            // Il percorso è presente nella lista dei percorsi protetti
-            return 1;       
-        }
-    }
-
-    // Il percorso non è presente nella lista dei percorsi protetti
-    return 0;
-}
-```
 
 After obtaining the inode and checking if it is present in the blacklist, all the different pre-handlers simply:
 - Return 0 if the path is present (also triggers the post-handler).
@@ -228,16 +236,16 @@ ssize_t __kernel_write_iter(struct file *file, struct iov_iter *from, loff_t *po
 	return ret;
 }
 ``` 
-The read and write operations are synchronized by using a read/write lock.
+
+### Synchronization in Log Operations
+In the system, ensuring thread safety during log read and write operations is crucial. To achieve this, is employed mutex-based synchronization.
 
 ```
-rwlock_t log_rwlock; 
+struct mutex log_mutex; 
 ```
-Using a reader-writer lock can offer the following benefits:
+In scenarios where multiple threads may concurrently write to the log, the risk of increased CPU usage due to spinlock busy-waiting cannot be ignored. After thorough testing of both solutions, we concluded that a mutex provides a more efficient choice in our context. Its blocking mechanism ensures that threads waiting for access to the log are suspended, reducing CPU wastage and ensuring smoother system operation.
 
--   Improved concurrency: Allows multiple readers to access data concurrently, enhancing system performance.
--   Reduced contention: Minimizes contention for shared resources by enabling concurrent reads and serializing writes.
--   Balanced resource utilization: Ensures fairness between readers and writers, preventing writer starvation.
+By employing a mutex, we ensure that only one thread can access the log at a time, preventing race conditions and guaranteeing data integrity. This approach strikes a balance between performance and reliability, making it the preferred choice for our system's logging mechanism.
 
 ### Defered Work
 The hash evaluation of the program file path that has accessed a blacklisted file/directory and the subsequent write operation to the log file are performed using defered work. The write must be executed after the hash evaluation is complete, so it waits for the completion signal before proceeding with the logging. To achieve this result work queues are involved.

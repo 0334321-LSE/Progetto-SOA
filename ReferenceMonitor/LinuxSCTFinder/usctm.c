@@ -360,7 +360,12 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 			// find and remove the path 
 			list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
 				if (strncmp(entry->path_name, kernel_path, strlen(entry->path_name)) == 0) {
-					list_del(&entry->list);
+					//Path found, remove it from the list under RCU protection
+					rcu_read_lock();
+					list_del_rcu(&entry->list);
+					rcu_read_unlock();
+
+					kfree(entry->path_name);
 					kfree(entry);
 					spin_unlock(&monitor->lock);
 				
@@ -398,7 +403,7 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 	#else
 	asmlinkage long sys_print_paths(char* output, size_t output_size){
 	#endif
-		struct protected_path *entry;
+		struct protected_path *entry, *tmp;
 		int i;
 		// the remaining space in the output buffer
 		size_t remaining_space;
@@ -423,11 +428,12 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		}
 
 
-		spin_lock(&monitor->lock);
+		//spin_lock(&monitor->lock);
+		rcu_read_lock();
 		i=1;
 
 		// Print all the entry in the output buffer
-		list_for_each_entry(entry, &monitor->protected_paths, list) {
+		list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
 			// Calculate remaining space in the output buffer
 			remaining_space = output_size - output_length;
 
@@ -453,7 +459,8 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		}
 
 	exit:
-		spin_unlock(&monitor->lock);
+		rcu_read_unlock();
+		//spin_unlock(&monitor->lock);
 
 		kfree(kernel_output);
 		return ret;
@@ -512,15 +519,17 @@ module_param_array(free_entries,int,NULL,0660);//default array size already know
 		}
 		
 		spin_lock(&monitor->lock);
-
+		rcu_read_lock();
 		// Remove all the paths 
 		list_for_each_entry_safe(entry, tmp, &monitor->protected_paths, list) {
 			
 			//printk("%s: Path %s removed successfully by %d\n",MODNAME, entry->path_name,current->pid);
-			list_del(&entry->list);
+			list_del_rcu(&entry->list);
+			kfree(entry->path_name);		
 			kfree(entry);		
 		}
 		
+		rcu_read_lock();
 		spin_unlock(&monitor->lock);
 
 		return 0;
